@@ -9,13 +9,13 @@
 // ---------------------------------------------------------
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl  = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnon = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl  = process.env.REACT_APP_SUPABASE_URL;
+const supabaseAnon = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnon) {
   throw new Error(
     "Missing Supabase env vars. " +
-    "Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+    "Set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY."
   );
 }
 
