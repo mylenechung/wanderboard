@@ -141,7 +141,7 @@ function TripLogin({ trip, onJoin, onBack }) {
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#667eea 0%,#764ba2 100%)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
       <div style={{ background:"white", borderRadius:24, padding:40, maxWidth:400, width:"100%", textAlign:"center", boxShadow:"0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ fontSize:48, marginBottom:8 }}>{avatarChoice || m => m[0]}</div>
+        <div style={{ fontSize:48, marginBottom:8 }}>{avatarChoice || selectedMember[0]}</div>
         <h2 style={{ fontSize:20, fontWeight:700, color:"#1e293b", marginBottom:4 }}>Hi, {selectedMember}!</h2>
         <p style={{ color:"#64748b", marginBottom:24, fontSize:14 }}>Ready to plan {trip.name}?</p>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:24 }}>
