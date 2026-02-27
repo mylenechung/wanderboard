@@ -1672,7 +1672,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
       </div>
 
       {/* Main content */}
-      <div style={{ maxWidth:"960px",margin:"0 auto",padding:"24px 20px 60px" }}>
+      <div style={{ maxWidth: tab==="itinerary" ? "100%" : "960px", margin:"0 auto", padding: tab==="itinerary" ? "16px 16px 0" : "24px 20px 60px" }}>
 
         {tab==="places"&&<>
           {/* ── Toolbar ── */}
@@ -2013,12 +2013,12 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
         </>}
         {tab==="itinerary"&&<>
           {/* ── Itinerary Board ── */}
-          <div style={{ display:"flex", gap:"16px", alignItems:"flex-start",
+          <div style={{ display:"flex", gap:"12px", alignItems:"flex-start",
             height:"calc(100vh - 120px)", overflow:"hidden" }}>
 
             {/* ── LEFT PANEL: Unassigned Places ── */}
             <div style={{
-              width:"240px", minWidth:"220px", flexShrink:0,
+              width:"200px", minWidth:"180px", flexShrink:0,
               background:C.white, border:`3px solid ${C.black}`,
               borderRadius:"20px", boxShadow:`5px 5px 0 ${C.black}`,
               display:"flex", flexDirection:"column",
@@ -2117,6 +2117,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                 display:"flex", gap:"14px", overflowX:"auto", overflowY:"hidden",
                 paddingBottom:"16px", alignItems:"flex-start",
                 flex:1, scrollbarWidth:"thin",
+                paddingRight:"20px",
+                scrollSnapType:"x proximity",
               }}>
                 {(itinerary ? itinerary.slice(1) : Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>(
                   <div key={dayObj.day}
