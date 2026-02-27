@@ -1412,6 +1412,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [groupMode,setGroupMode] = useState(null);
   const [showManageMembers,setShowManageMembers] = useState(false);
   const [saving,setSaving] = useState(false);
+  const [showTitleCardModal,setShowTitleCardModal] = useState(false);
+  const [titleCardDraft,setTitleCardDraft] = useState({label:"",color:C.black});
 
   // ── Load itinerary, docs, checklist on mount ─────────────
   useEffect(()=>{
@@ -2087,16 +2089,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                     verticalAlign:"middle",marginRight:"6px"}}/>Your {days}-Day Plan
                 </h2>
                 {/* +Title button */}
-                <button onClick={()=>{
-                    const colors=[C.black,C.yellow,C.orange,C.cyan,C.pink,C.lime];
-                    const labels=["Food","Hotel","Shopping","Transport","Sightseeing","Custom"];
-                    const picked=window.prompt("Title card label (e.g. Food, Hotel, Shopping):");
-                    if(!picked?.trim()) return;
-                    const colorPick=colors[Math.floor(Math.random()*colors.length)];
-                    // Add title card to unassigned
-                    const titleCard={id:uid(),name:picked.trim(),_isTitleCard:true,_titleColor:colorPick,votes:[],addedBy:currentMember.name};
-                    setItinerary(prev=>[{...prev[0],places:[titleCard,...(prev[0]?.places||[])]}, ...prev.slice(1)]);
-                  }} style={{
+                <button onClick={()=>{ setTitleCardDraft({label:"",color:C.black}); setShowTitleCardModal(true); }} style={{
                   background:C.black, color:C.white, border:`2px solid ${C.black}`,
                   borderRadius:"999px", padding:"6px 16px", fontSize:"12px", fontWeight:900,
                   cursor:"pointer", boxShadow:`2px 2px 0 ${C.black}`,
@@ -2214,6 +2207,105 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
       {showAddLoc&&<LocationModal onSave={handleAddLocation} onClose={()=>setShowAddLoc(false)}/>}
       {editLoc&&<LocationModal existing={editLoc} onSave={handleSaveEdit} onClose={()=>setEditLoc(null)}/>}
       {showManageMembers&&<ManageMembersModal trip={trip} onUpdate={handleUpdateMembers} onClose={()=>setShowManageMembers(false)}/>}
+
+      {/* ── Title Card Modal ── */}
+      {showTitleCardModal&&(
+        <div onClick={()=>setShowTitleCardModal(false)}
+          style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,
+            display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:C.white,border:`4px solid ${C.black}`,borderRadius:"24px",
+              boxShadow:`8px 8px 0 ${C.black}`,width:"100%",maxWidth:"360px",padding:"28px 24px",
+              fontFamily:"'Nunito',sans-serif" }}>
+            <h3 style={{ fontWeight:900,fontSize:"20px",color:C.black,margin:"0 0 20px" }}>
+              🏷️ New Title Card
+            </h3>
+            {/* Label input */}
+            <label style={{ fontWeight:900,fontSize:"13px",color:C.black,display:"block",marginBottom:"6px" }}>
+              Label
+            </label>
+            <input
+              autoFocus
+              value={titleCardDraft.label}
+              onChange={e=>setTitleCardDraft(d=>({...d,label:e.target.value}))}
+              onKeyDown={e=>{ if(e.key==="Enter"&&titleCardDraft.label.trim()) {
+                const tc={id:uid(),name:titleCardDraft.label.trim(),_isTitleCard:true,_titleColor:titleCardDraft.color,votes:[],addedBy:currentMember.name};
+                setItinerary(prev=>[{...prev[0],places:[tc,...(prev[0]?.places||[])]}, ...prev.slice(1)]);
+                setShowTitleCardModal(false);
+              }}}
+              placeholder="e.g. Food, Hotel, Shopping..."
+              style={{ width:"100%",background:C.cream,border:`3px solid ${C.black}`,
+                borderRadius:"12px",padding:"10px 14px",fontSize:"14px",fontWeight:700,
+                fontFamily:"'Nunito',sans-serif",outline:"none",
+                boxShadow:`3px 3px 0 ${C.black}`,boxSizing:"border-box",marginBottom:"20px" }}/>
+            {/* Color palette */}
+            <label style={{ fontWeight:900,fontSize:"13px",color:C.black,display:"block",marginBottom:"10px" }}>
+              Color
+            </label>
+            <div style={{ display:"flex",gap:"10px",flexWrap:"wrap",marginBottom:"24px" }}>
+              {[
+                {color:C.black,  label:"Black"},
+                {color:C.orange, label:"Orange"},
+                {color:C.yellow, label:"Yellow"},
+                {color:C.cyan,   label:"Cyan"},
+                {color:C.pink,   label:"Pink"},
+                {color:C.lime,   label:"Lime"},
+                {color:C.purple, label:"Purple"},
+              ].map(({color,label})=>(
+                <button key={color} onClick={()=>setTitleCardDraft(d=>({...d,color}))}
+                  title={label}
+                  style={{ width:40,height:40,borderRadius:"12px",
+                    background:color,cursor:"pointer",
+                    border: titleCardDraft.color===color
+                      ? `4px solid ${C.black}`
+                      : `3px solid rgba(0,0,0,.2)`,
+                    boxShadow: titleCardDraft.color===color
+                      ? `3px 3px 0 ${C.black}`
+                      : "none",
+                    transform: titleCardDraft.color===color ? "scale(1.15)" : "scale(1)",
+                    transition:"all .12s",
+                  }}/>
+              ))}
+            </div>
+            {/* Preview */}
+            <div style={{ marginBottom:"20px" }}>
+              <div style={{ fontSize:"11px",fontWeight:900,color:"#999",marginBottom:"6px" }}>PREVIEW</div>
+              <div style={{ background:titleCardDraft.color,border:`3px solid ${C.black}`,
+                borderRadius:"12px",padding:"10px 14px",boxShadow:`3px 3px 0 ${C.black}` }}>
+                <span style={{ fontWeight:900,fontSize:"13px",
+                  color:(titleCardDraft.color===C.yellow||titleCardDraft.color===C.lime||titleCardDraft.color===C.cyan)?C.black:C.white,
+                  fontFamily:"'Nunito',sans-serif" }}>
+                  🏷️ {titleCardDraft.label||"Your label here"}
+                </span>
+              </div>
+            </div>
+            {/* Buttons */}
+            <div style={{ display:"flex",gap:"10px" }}>
+              <button onClick={()=>setShowTitleCardModal(false)}
+                style={{ flex:1,background:C.cream,border:`3px solid ${C.black}`,borderRadius:"12px",
+                  padding:"10px",fontSize:"14px",fontWeight:900,cursor:"pointer",
+                  boxShadow:`3px 3px 0 ${C.black}`,fontFamily:"'Nunito',sans-serif" }}>
+                Cancel
+              </button>
+              <button
+                disabled={!titleCardDraft.label.trim()}
+                onClick={()=>{
+                  const tc={id:uid(),name:titleCardDraft.label.trim(),_isTitleCard:true,_titleColor:titleCardDraft.color,votes:[],addedBy:currentMember.name};
+                  setItinerary(prev=>[{...prev[0],places:[tc,...(prev[0]?.places||[])]}, ...prev.slice(1)]);
+                  setShowTitleCardModal(false);
+                }}
+                style={{ flex:2,background:titleCardDraft.label.trim()?C.black:"#ccc",
+                  border:`3px solid ${titleCardDraft.label.trim()?C.black:"#ccc"}`,
+                  borderRadius:"12px",padding:"10px",fontSize:"14px",fontWeight:900,
+                  cursor:titleCardDraft.label.trim()?"pointer":"not-allowed",color:C.white,
+                  boxShadow:titleCardDraft.label.trim()?`3px 3px 0 ${C.black}`:"none",
+                  fontFamily:"'Nunito',sans-serif",transition:"all .15s" }}>
+                ＋ Add Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Doc Preview Modal ── */}
       {previewDoc&&(
