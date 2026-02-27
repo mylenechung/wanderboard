@@ -2016,7 +2016,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
         {tab==="itinerary"&&<>
           {/* ── Itinerary Board ── */}
           <div style={{ display:"flex", gap:"12px", alignItems:"flex-start",
-            height:"calc(100vh - 120px)", overflow:"hidden" }}>
+            minHeight:"calc(100vh - 120px)", overflow:"visible" }}>
 
             {/* ── LEFT PANEL: Unassigned Places ── */}
             <div style={{
@@ -2024,7 +2024,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               background:C.white, border:`3px solid ${C.black}`,
               borderRadius:"20px", boxShadow:`5px 5px 0 ${C.black}`,
               display:"flex", flexDirection:"column",
-              maxHeight:"100%", overflow:"hidden",
+              position:"sticky", top:"16px", alignSelf:"flex-start",
             }}>
               <div style={{ padding:"14px 16px 10px", borderBottom:`2px solid #eee`, flexShrink:0 }}>
                 <div style={{ fontWeight:900, fontSize:"15px", color:C.black,
@@ -2039,8 +2039,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                 <p style={{ fontSize:"11px", color:"#999", fontWeight:700, margin:"4px 0 0",
                   fontFamily:"'Nunito',sans-serif" }}>Drag to a day →</p>
               </div>
-              <div style={{ overflowY:"auto", padding:"12px", flex:1,
-                scrollbarWidth:"thin" }}
+              <div style={{ padding:"12px", flex:1 }}
                 onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#FFF5E4"}}
                 onDragLeave={e=>{e.currentTarget.style.background="transparent"}}
                 onDrop={e=>{e.currentTarget.style.background="transparent";handleDrop(e,-1)}}>
@@ -2079,7 +2078,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
             {/* ── RIGHT: Day Columns ── */}
             <div style={{ flex:1, display:"flex", flexDirection:"column",
-              overflow:"hidden", minWidth:0 }}>
+              overflow:"visible", minWidth:0 }}>
 
               {/* Header row */}
               <div style={{ display:"flex", alignItems:"center", gap:"12px",
@@ -2107,11 +2106,10 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
               {/* Day columns scroll area */}
               <div style={{
-                display:"flex", gap:"14px", overflowX:"auto", overflowY:"hidden",
-                paddingBottom:"16px", alignItems:"flex-start",
+                display:"flex", gap:"14px", overflowX:"auto", overflowY:"visible",
+                paddingBottom:"40px", alignItems:"flex-start",
                 flex:1, scrollbarWidth:"thin",
                 paddingRight:"20px",
-                scrollSnapType:"x proximity",
               }}>
                 {(itinerary ? itinerary.slice(1) : Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>(
                   <div key={dayObj.day}
@@ -2123,7 +2121,6 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       borderRadius:"20px", padding:"14px",
                       minWidth:"240px", width:"240px", flexShrink:0,
                       boxShadow:`5px 5px 0 ${C.black}`,
-                      maxHeight:"100%", overflowY:"auto", scrollbarWidth:"thin",
                       display:"flex", flexDirection:"column",
                     }}>
                     {/* Day header */}
