@@ -2024,7 +2024,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               background:C.white, border:`3px solid ${C.black}`,
               borderRadius:"20px", boxShadow:`5px 5px 0 ${C.black}`,
               display:"flex", flexDirection:"column",
-              position:"sticky", top:"16px", alignSelf:"flex-start",
+              position:"sticky", top:"110px", alignSelf:"flex-start",
             }}>
               <div style={{ padding:"14px 16px 10px", borderBottom:`2px solid #eee`, flexShrink:0 }}>
                 <div style={{ fontWeight:900, fontSize:"15px", color:C.black,
