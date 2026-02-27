@@ -593,12 +593,41 @@ function LocationCard({ loc, currentMember, onVote, onEdit, onDelete, members, d
 /* ══════════════════════════════════════════════════════════
    ITINERARY CARD — collapsed by default, expands on click
 ══════════════════════════════════════════════════════════ */
-function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, onDragStart }) {
+function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, onDragStart, onMoveUp, onMoveDown }) {
   const [open, setOpen] = useState(false);
+
+  // ── Title Card (label divider) ──
+  if(loc._isTitleCard) {
+    const bg = loc._titleColor || "#111";
+    const textColor = (bg===C.yellow||bg===C.lime||bg===C.cyan) ? C.black : C.white;
+    return (
+      <div draggable onDragStart={onDragStart}
+        style={{ background:bg, border:`3px solid ${C.black}`, borderRadius:"12px",
+          boxShadow:`3px 3px 0 ${C.black}`, marginBottom:"8px", padding:"8px 12px",
+          display:"flex", alignItems:"center", gap:"8px", cursor:"grab",
+          transition:"transform .1s" }}
+        onMouseEnter={e=>e.currentTarget.style.transform="translate(-1px,-1px)"}
+        onMouseLeave={e=>e.currentTarget.style.transform="none"}>
+        <span style={{ fontWeight:900, fontSize:"13px", color:textColor,
+          fontFamily:"'Nunito',sans-serif", flex:1 }}>🏷️ {loc.name}</span>
+        <div style={{ display:"flex", flexDirection:"column", gap:"2px" }}>
+          {onMoveUp&&<button onClick={e=>{e.stopPropagation();onMoveUp();}}
+            style={{ background:"rgba(255,255,255,.25)", border:"none", borderRadius:"4px",
+              cursor:"pointer", padding:"1px 5px", fontSize:"10px", lineHeight:1 }}>▲</button>}
+          {onMoveDown&&<button onClick={e=>{e.stopPropagation();onMoveDown();}}
+            style={{ background:"rgba(255,255,255,.25)", border:"none", borderRadius:"4px",
+              cursor:"pointer", padding:"1px 5px", fontSize:"10px", lineHeight:1 }}>▼</button>}
+        </div>
+        <button onClick={e=>{e.stopPropagation();onDelete(loc.id);}}
+          style={{ background:"rgba(255,255,255,.2)", border:`1px solid rgba(255,255,255,.4)`,
+            borderRadius:"6px", cursor:"pointer", padding:"2px 7px", fontSize:"12px",
+            color:textColor, fontWeight:900 }}>✕</button>
+      </div>
+    );
+  }
+
   const hasVoted = loc.votes?.includes(currentMember?.name);
   const voteCount = loc.votes?.length || 0;
-  const adder = members?.find(m => m.name === loc.addedBy);
-
   const AREA_COLORS = [C.cyan,C.pink,C.lime,C.purple,"#FFAA80",C.yellow,C.orange];
   const ac = loc.area ? AREA_COLORS[loc.area.charCodeAt(0) % AREA_COLORS.length] : C.yellow;
 
@@ -619,60 +648,62 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
       onMouseEnter={e=>{ e.currentTarget.style.transform="translate(-2px,-2px)"; e.currentTarget.style.boxShadow=`6px 6px 0 ${C.black}`; }}
       onMouseLeave={e=>{ e.currentTarget.style.transform="none"; e.currentTarget.style.boxShadow=`4px 4px 0 ${C.black}`; }}
     >
-      {/* ── Collapsed header — always visible, click to toggle ── */}
+      {/* ── Collapsed header ── */}
       <div
         onClick={()=>setOpen(o=>!o)}
         style={{
-          padding:    "12px 14px",
+          padding:    "10px 12px",
           display:    "flex",
           alignItems: "center",
           gap:        "8px",
           cursor:     "pointer",
           userSelect: "none",
         }}>
-        {/* Tiny blob avatar */}
-        <div style={{ flexShrink:0 }}>
-          {adder?.avatar
-            ? <Blob size={32} mood={adder.avatar.mood} color={adder.avatar.color} avatarId={adder.avatar.id||adder.id}/>
-            : <div style={{ width:32,height:32,borderRadius:"50%",background:C.yellow,
-                border:`2px solid ${C.black}`,display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:"14px" }}><PlaceIcon iconId={loc.icon} size={14}/></div>
-          }
+        {/* Place icon (not avatar) */}
+        <div style={{ flexShrink:0, width:30, height:30, borderRadius:"50%",
+          background:C.cream, border:`2px solid ${C.black}`,
+          display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <PlaceIcon iconId={loc.icon} size={16}/>
         </div>
 
         {/* Name + area */}
         <div style={{ flex:1,minWidth:0 }}>
-          <div style={{ fontWeight:900,fontSize:"14px",color:C.black,
+          <div style={{ fontWeight:900,fontSize:"13px",color:C.black,
             fontFamily:"'Nunito',sans-serif",lineHeight:1.3,
             whiteSpace:"normal",wordBreak:"break-word" }}>
             {loc.name}
           </div>
           {loc.area && (
-            <span style={{ display:"inline-block",marginTop:"3px",
+            <span style={{ display:"inline-block",marginTop:"2px",
               background:ac,border:`2px solid ${C.black}`,borderRadius:"999px",
-              padding:"1px 9px",fontSize:"10px",fontWeight:900,color:C.black,
+              padding:"0px 8px",fontSize:"10px",fontWeight:900,color:C.black,
               boxShadow:`1px 1px 0 ${C.black}` }}>{loc.area}</span>
           )}
         </div>
 
-        {/* Vote count badge + adder name + chevron */}
-        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"4px",flexShrink:0,paddingTop:"2px" }}>
-          <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
-          {voteCount > 0 && (
-            <span style={{ background:C.orange,border:`2px solid ${C.black}`,borderRadius:"999px",
-              padding:"1px 8px",fontSize:"11px",fontWeight:900,color:C.white,
-              boxShadow:`1px 1px 0 ${C.black}` }}>✓{voteCount}</span>
-          )}
-          <span style={{ fontSize:"12px",color:"#999",fontWeight:900,
-            transform: open?"rotate(180deg)":"rotate(0deg)",
-            transition:"transform .2s",display:"inline-block" }}>▼</span>
+        {/* Move arrows + vote + chevron */}
+        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"3px",flexShrink:0 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:"4px" }}>
+            {/* Up/down arrows */}
+            <div style={{ display:"flex",flexDirection:"column",gap:"1px" }}>
+              {onMoveUp&&<button onClick={e=>{e.stopPropagation();onMoveUp();}}
+                style={{ background:C.cream,border:`1px solid ${C.black}`,borderRadius:"4px",
+                  cursor:"pointer",padding:"0px 4px",fontSize:"9px",lineHeight:"14px",
+                  fontWeight:900 }}>▲</button>}
+              {onMoveDown&&<button onClick={e=>{e.stopPropagation();onMoveDown();}}
+                style={{ background:C.cream,border:`1px solid ${C.black}`,borderRadius:"4px",
+                  cursor:"pointer",padding:"0px 4px",fontSize:"9px",lineHeight:"14px",
+                  fontWeight:900 }}>▼</button>}
+            </div>
+            {voteCount > 0 && (
+              <span style={{ background:C.orange,border:`2px solid ${C.black}`,borderRadius:"999px",
+                padding:"0px 7px",fontSize:"10px",fontWeight:900,color:C.white,
+                boxShadow:`1px 1px 0 ${C.black}` }}>✓{voteCount}</span>
+            )}
+            <span style={{ fontSize:"11px",color:"#999",fontWeight:900,
+              transform: open?"rotate(180deg)":"rotate(0deg)",
+              transition:"transform .2s",display:"inline-block" }}>▼</span>
           </div>
-          {adder && (
-            <span style={{ fontSize:"10px",fontWeight:800,color:"#999",
-              fontFamily:"'Nunito',sans-serif",whiteSpace:"nowrap" }}>
-              {loc.addedBy}
-            </span>
-          )}
         </div>
       </div>
 
@@ -1385,7 +1416,23 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   // ── Load itinerary, docs, checklist on mount ─────────────
   useEffect(()=>{
     fetchItinerary(trip.id).then(s=>{
-      if(s){ setItinerary(s.itinerary); setDayTitles(s.dayTitles||{}); }
+      if(s && s.itinerary) {
+        // Ensure first bucket (index 0) is the "unassigned" pool
+        let it = s.itinerary;
+        if(!it[0] || it[0].day !== 0) {
+          // Migrate old format: add unassigned bucket at front
+          const assignedIds = new Set(it.flatMap(d=>d.places.map(p=>p.id)));
+          const unassigned = (trip.locations||[]).filter(l=>!assignedIds.has(l.id));
+          it = [{day:0, places:unassigned}, ...it];
+        }
+        setItinerary(it);
+        setDayTitles(s.dayTitles||{});
+      } else {
+        // First time: all places go to unassigned, create day buckets
+        const buckets = [{day:0, places:[...(trip.locations||[])]}];
+        for(let i=1;i<=days;i++) buckets.push({day:i,places:[]});
+        setItinerary(buckets);
+      }
     }).catch(console.error);
 
     fetchDocuments(trip.id).then(setDocs).catch(console.error);
@@ -1408,6 +1455,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
     try {
       const loc = await addLocation(trip.id, form, currentMember.name);
       onUpdateTrip({...trip, locations:[...locations, loc]});
+      // Also add to unassigned itinerary bucket
+      if(itinerary) setItinerary(prev=>[{...prev[0],places:[...prev[0].places,loc]},...prev.slice(1)]);
       setShowAddLoc(false);
     } catch(e){ console.error(e); alert("Could not add place."); }
     finally{ setSaving(false); }
@@ -1463,30 +1512,38 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   }
 
   // ── Itinerary ─────────────────────────────────────────────
-  function doGenerateAI() {
-    setItinerary(generateItinerary(locations,days));
-    setTab("itinerary");
-  }
   function handleDragStart(e,dayIdx,locIdx) {
     setDragInfo({dayIdx,locIdx});
     e.dataTransfer.effectAllowed="move";
   }
+  // dayIdx -1 = unassigned panel (maps to itinerary[0])
+  function bucketIdx(dayIdx) { return dayIdx === -1 ? 0 : dayIdx + 1; }
   function handleDrop(e,targetDay,targetIdx=null) {
     e.preventDefault();
-    if(!dragInfo)return;
-    const {dayIdx,locIdx}=dragInfo;
-    const newIt=itinerary.map(d=>({...d,places:[...d.places]}));
-    const [moved]=newIt[dayIdx].places.splice(locIdx,1);
-    if(targetIdx!==null && targetDay===dayIdx) {
+    if(!dragInfo) return;
+    const {dayIdx,locIdx} = dragInfo;
+    const fromBucket = bucketIdx(dayIdx);
+    const toBucket = bucketIdx(targetDay);
+    const newIt = itinerary.map(d=>({...d,places:[...d.places]}));
+    const [moved] = newIt[fromBucket].places.splice(locIdx,1);
+    if(targetIdx!==null && toBucket===fromBucket) {
       const insertAt = targetIdx > locIdx ? targetIdx-1 : targetIdx;
-      newIt[targetDay].places.splice(insertAt,0,moved);
+      newIt[toBucket].places.splice(insertAt,0,moved);
     } else if(targetIdx!==null) {
-      newIt[targetDay].places.splice(targetIdx,0,moved);
+      newIt[toBucket].places.splice(targetIdx,0,moved);
     } else {
-      newIt[targetDay].places.push(moved);
+      newIt[toBucket].places.push(moved);
     }
     setItinerary(newIt);
     setDragInfo(null);
+  }
+  function handleMoveCard(fromDay,fromIdx,toDay,toIdx) {
+    const fromBucket = bucketIdx(fromDay);
+    const toBucket = bucketIdx(toDay);
+    const newIt = itinerary.map(d=>({...d,places:[...d.places]}));
+    const [moved] = newIt[fromBucket].places.splice(fromIdx,1);
+    newIt[toBucket].places.splice(toIdx,0,moved);
+    setItinerary(newIt);
   }
 
   // ── Docs mutations ────────────────────────────────────────
@@ -1592,7 +1649,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
       {/* Tabs */}
       <div style={{ background:C.white,borderBottom:`3px solid ${C.black}`,
         display:"flex",padding:"0 20px",position:"sticky",top:"57px",zIndex:99 }}>
-        {[["places",ASSETS.tab_places,"Places"],["itinerary",ASSETS.tab_itinerary,"AI Itinerary"],["docs",ASSETS.tab_docs,"Docs & Checklist"]].map(([t,tabImg,label])=>(
+        {[["places",ASSETS.tab_places,"Places"],["itinerary",ASSETS.tab_itinerary,"Itinerary"],["docs",ASSETS.tab_docs,"Docs & Checklist"]].map(([t,tabImg,label])=>(
           <button key={t} onClick={()=>setTab(t)} style={{
             background:  tab===t?C.yellow:"transparent",
             border:      "none",
@@ -1623,7 +1680,6 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
             <h2 style={{ fontWeight:900,fontSize:"22px",color:C.black,margin:0,flex:1 }}>
               Places ({locations.length})
             </h2>
-            <PillBtn small color={C.cyan} onClick={doGenerateAI}>✨ AI Plan</PillBtn>
             <PillBtn small color={C.orange} textColor={C.white} onClick={()=>setShowAddLoc(true)}>＋ Add</PillBtn>
           </div>
 
@@ -1956,151 +2012,175 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
           </div>
         </>}
         {tab==="itinerary"&&<>
-          {!itinerary?(
-            <Card color={C.cyan} style={{ textAlign:"center",padding:"52px 24px" }}>
-              <Blob size={110} mood="excited" color={C.yellow}
-                style={{ margin:"0 auto 16px",filter:`drop-shadow(5px 5px 0 ${C.black})` }} avatarId="sunny"/>
-              <h2 style={{ fontWeight:900,fontSize:"24px",color:C.black,marginBottom:"10px" }}>
-                AI Itinerary Generator ✨
-              </h2>
-              <p style={{ fontWeight:700,color:"#333",maxWidth:"340px",margin:"0 auto 24px",lineHeight:1.7 }}>
-                Groups your places by area and plans your {days} days. Drag to rearrange!
-              </p>
-              {locations.length===0
-                ?<p style={{ color:C.orange,fontWeight:900 }}>Add some places first!</p>
-                :<PillBtn color={C.orange} textColor={C.white} onClick={doGenerateAI}>
-                  ✨ Generate {days}-Day Plan
-                </PillBtn>
-              }
-            </Card>
-          ):(
-            <>
-              <div style={{ display:"flex",alignItems:"center",gap:"12px",marginBottom:"16px",flexWrap:"wrap" }}>
-                <h2 style={{ fontWeight:900,fontSize:"22px",color:C.black,margin:0,flex:1 }}>
-                  <img src={ASSETS.tab_itinerary} style={{width:24,height:24,objectFit:"contain",verticalAlign:"middle",marginRight:"6px"}}/>Your {days}-Day Plan
+          {/* ── Itinerary Board ── */}
+          <div style={{ display:"flex", gap:"16px", alignItems:"flex-start",
+            height:"calc(100vh - 120px)", overflow:"hidden" }}>
+
+            {/* ── LEFT PANEL: Unassigned Places ── */}
+            <div style={{
+              width:"240px", minWidth:"220px", flexShrink:0,
+              background:C.white, border:`3px solid ${C.black}`,
+              borderRadius:"20px", boxShadow:`5px 5px 0 ${C.black}`,
+              display:"flex", flexDirection:"column",
+              maxHeight:"100%", overflow:"hidden",
+            }}>
+              <div style={{ padding:"14px 16px 10px", borderBottom:`2px solid #eee`, flexShrink:0 }}>
+                <div style={{ fontWeight:900, fontSize:"15px", color:C.black,
+                  fontFamily:"'Nunito',sans-serif", display:"flex", alignItems:"center", gap:"8px" }}>
+                  📍 Unassigned
+                  <span style={{ background:C.orange, color:C.white, borderRadius:"999px",
+                    padding:"1px 8px", fontSize:"11px", fontWeight:900,
+                    border:`2px solid ${C.black}`, boxShadow:`1px 1px 0 ${C.black}` }}>
+                    {itinerary ? itinerary[0]?.places?.length || 0 : locations.length}
+                  </span>
+                </div>
+                <p style={{ fontSize:"11px", color:"#999", fontWeight:700, margin:"4px 0 0",
+                  fontFamily:"'Nunito',sans-serif" }}>Drag to a day →</p>
+              </div>
+              <div style={{ overflowY:"auto", padding:"12px", flex:1,
+                scrollbarWidth:"thin" }}
+                onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#FFF5E4"}}
+                onDragLeave={e=>{e.currentTarget.style.background="transparent"}}
+                onDrop={e=>{e.currentTarget.style.background="transparent";handleDrop(e,-1)}}>
+                {(itinerary ? itinerary[0]?.places || [] : []).length === 0 && (
+                  <p style={{ color:"#ccc", fontSize:"12px", textAlign:"center",
+                    padding:"20px 0", fontWeight:800, fontStyle:"italic" }}>
+                    All placed! ✓
+                  </p>
+                )}
+                {(itinerary ? itinerary[0]?.places || [] : []).map((loc,locIdx)=>(
+                  <div key={loc.id}
+                    onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
+                    onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
+                    onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,-1,locIdx);}}>
+                    <ItineraryCard loc={loc} currentMember={currentMember}
+                      members={trip.members} onVote={handleToggleVote}
+                      onEdit={setEditLoc}
+                      onDelete={id=>{
+                        setItinerary(prev=>prev.map(d=>({...d,places:d.places.filter(p=>p.id!==id)})));
+                        deleteLocation(id);
+                      }}
+                      onMoveUp={locIdx>0?()=>handleMoveCard(-1,locIdx,-1,locIdx-1):null}
+                      onMoveDown={locIdx<(itinerary?itinerary[0]?.places?.length||0:0)-1?()=>handleMoveCard(-1,locIdx,-1,locIdx+1):null}
+                      onDragStart={e=>handleDragStart(e,-1,locIdx)}/>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding:"10px 12px", borderTop:`2px solid #eee`, flexShrink:0 }}>
+                <button onClick={()=>setShowAddLoc(true)} style={{
+                  width:"100%", background:C.yellow, border:`2px solid ${C.black}`,
+                  borderRadius:"10px", padding:"8px", fontSize:"13px", fontWeight:900,
+                  cursor:"pointer", boxShadow:`2px 2px 0 ${C.black}`,
+                  fontFamily:"'Nunito',sans-serif" }}>＋ Add Place</button>
+              </div>
+            </div>
+
+            {/* ── RIGHT: Day Columns ── */}
+            <div style={{ flex:1, display:"flex", flexDirection:"column",
+              overflow:"hidden", minWidth:0 }}>
+
+              {/* Header row */}
+              <div style={{ display:"flex", alignItems:"center", gap:"12px",
+                marginBottom:"12px", flexShrink:0, flexWrap:"wrap" }}>
+                <h2 style={{ fontWeight:900, fontSize:"20px", color:C.black, margin:0, flex:1 }}>
+                  <img src={ASSETS.tab_itinerary} style={{width:22,height:22,objectFit:"contain",
+                    verticalAlign:"middle",marginRight:"6px"}}/>Your {days}-Day Plan
                 </h2>
-                <button
-                  onClick={()=>{
-                    window.__wanderboard_print_data = { itinerary, dayTitles };
+                {/* +Title button */}
+                <button onClick={()=>{
+                    const colors=[C.black,C.yellow,C.orange,C.cyan,C.pink,C.lime];
+                    const labels=["Food","Hotel","Shopping","Transport","Sightseeing","Custom"];
+                    const picked=window.prompt("Title card label (e.g. Food, Hotel, Shopping):");
+                    if(!picked?.trim()) return;
+                    const colorPick=colors[Math.floor(Math.random()*colors.length)];
+                    // Add title card to unassigned
+                    const titleCard={id:uid(),name:picked.trim(),_isTitleCard:true,_titleColor:colorPick,votes:[],addedBy:currentMember.name};
+                    setItinerary(prev=>[{...prev[0],places:[titleCard,...(prev[0]?.places||[])]}, ...prev.slice(1)]);
+                  }} style={{
+                  background:C.black, color:C.white, border:`2px solid ${C.black}`,
+                  borderRadius:"999px", padding:"6px 16px", fontSize:"12px", fontWeight:900,
+                  cursor:"pointer", boxShadow:`2px 2px 0 ${C.black}`,
+                  fontFamily:"'Nunito',sans-serif" }}>＋ Title Card</button>
+                <button onClick={()=>{
+                    window.__wanderboard_print_data = { itinerary: itinerary?.slice(1), dayTitles };
                     const el = document.getElementById("wb-print-itinerary");
                     if(el){ el.style.display="block"; window.print(); setTimeout(()=>{ el.style.display="none"; },1200); }
-                  }}
-                  style={{ background:"#fff",border:`3px solid ${C.black}`,borderRadius:"999px",
-                    padding:"8px 18px",fontSize:"13px",fontWeight:900,cursor:"pointer",
-                    boxShadow:`3px 3px 0 ${C.black}`,fontFamily:"'Nunito',sans-serif",
-                    display:"flex",alignItems:"center",gap:"6px",flexShrink:0 }}>
+                  }} style={{ background:C.white, border:`2px solid ${C.black}`, borderRadius:"999px",
+                  padding:"6px 14px", fontSize:"12px", fontWeight:900, cursor:"pointer",
+                  boxShadow:`2px 2px 0 ${C.black}`, fontFamily:"'Nunito',sans-serif" }}>
                   📄 Export PDF
                 </button>
               </div>
-              <div style={{ display:"flex",gap:"8px",marginBottom:"12px" }}>
-                <PillBtn small color={C.cream} onClick={doGenerateAI}>↻ Redo</PillBtn>
-                <PillBtn small color={C.orange} textColor={C.white} onClick={()=>setShowAddLoc(true)}>＋ Place</PillBtn>
-              </div>
-              <p style={{ fontWeight:700,color:"#666",fontSize:"13px",marginBottom:"20px" }}>
-                💡 Click a place to expand · Drag cards between days to rearrange
-              </p>
 
-              {/* Horizontal scrolling columns — one per day */}
+              {/* Day columns scroll area */}
               <div style={{
-                display:        "flex",
-                gap:            "16px",
-                overflowX:      "auto",
-                paddingBottom:  "20px",
-                alignItems:     "flex-start",
-                /* nice scrollbar */
-                scrollbarWidth: "thin",
+                display:"flex", gap:"14px", overflowX:"auto", overflowY:"hidden",
+                paddingBottom:"16px", alignItems:"flex-start",
+                flex:1, scrollbarWidth:"thin",
               }}>
-                {itinerary.map((dayObj,dayIdx)=>(
+                {(itinerary ? itinerary.slice(1) : Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>(
                   <div key={dayObj.day}
                     onDragOver={e=>{e.preventDefault();e.currentTarget.style.outline=`3px dashed ${C.orange}`}}
                     onDragLeave={e=>{e.currentTarget.style.outline="none"}}
                     onDrop={e=>{e.currentTarget.style.outline="none";handleDrop(e,dayIdx)}}
                     style={{
-                      background:   C.white,
-                      border:       `3px solid ${C.black}`,
-                      borderRadius: "20px",
-                      padding:      "16px",
-                      minWidth:     "260px",
-                      width:        "260px",
-                      flexShrink:   0,
-                      boxShadow:    `5px 5px 0 ${C.black}`,
+                      background:C.white, border:`3px solid ${C.black}`,
+                      borderRadius:"20px", padding:"14px",
+                      minWidth:"240px", width:"240px", flexShrink:0,
+                      boxShadow:`5px 5px 0 ${C.black}`,
+                      maxHeight:"100%", overflowY:"auto", scrollbarWidth:"thin",
+                      display:"flex", flexDirection:"column",
                     }}>
                     {/* Day header */}
-                    <div style={{ marginBottom:"14px" }}>
-                      <div style={{ display:"flex",alignItems:"center",gap:"8px" }}>
+                    <div style={{ marginBottom:"12px", flexShrink:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
                         <span style={{
-                          background:   dayColors[dayIdx%dayColors.length],
-                          border:       `3px solid ${C.black}`,
-                          borderRadius: "12px",
-                          padding:      "4px 16px",
-                          fontWeight:   900,
-                          fontSize:     "14px",
-                          color:        C.black,
-                          boxShadow:    `3px 3px 0 ${C.black}`,
-                          flexShrink:   0,
+                          background:dayColors[dayIdx%dayColors.length],
+                          border:`3px solid ${C.black}`, borderRadius:"12px",
+                          padding:"4px 14px", fontWeight:900, fontSize:"13px",
+                          color:C.black, boxShadow:`3px 3px 0 ${C.black}`, flexShrink:0,
                         }}>Day {dayObj.day}</span>
                         {trip.startDate && (
-                          <span style={{ fontSize:"12px",fontWeight:800,color:"#888" }}>
+                          <span style={{ fontSize:"11px", fontWeight:800, color:"#888" }}>
                             {new Date(new Date(trip.startDate).getTime()+(dayIdx*86400000))
                               .toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
                           </span>
                         )}
                       </div>
-                      <div style={{ marginTop:"4px",fontSize:"11px",fontWeight:800,
-                        color:"#aaa",fontFamily:"'Nunito',sans-serif" }}>
-                        {dayObj.places.length} place{dayObj.places.length!==1?"s":""}
+                      <div style={{ marginTop:"3px", fontSize:"11px", fontWeight:800,
+                        color:"#aaa", fontFamily:"'Nunito',sans-serif" }}>
+                        {dayObj.places.length} item{dayObj.places.length!==1?"s":""}
                       </div>
                       {/* Editable day title */}
                       {editingDayTitle===dayIdx ? (
-                        <input
-                          autoFocus
-                          value={dayTitles[dayIdx]||""}
+                        <input autoFocus value={dayTitles[dayIdx]||""}
                           onChange={e=>setDayTitles(t=>({...t,[dayIdx]:e.target.value}))}
                           onBlur={()=>setEditingDayTitle(null)}
                           onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape")setEditingDayTitle(null)}}
                           placeholder="e.g. Asakusa & Ueno"
-                          style={{
-                            marginTop:    "8px",
-                            width:        "100%",
-                            background:   C.yellow,
-                            border:       `2px solid ${C.black}`,
-                            borderRadius: "8px",
-                            padding:      "5px 10px",
-                            fontSize:     "12px",
-                            fontWeight:   900,
-                            fontFamily:   "'Nunito',sans-serif",
-                            outline:      "none",
-                            boxShadow:    `2px 2px 0 ${C.black}`,
-                          }}/>
+                          style={{ marginTop:"6px", width:"100%", background:C.yellow,
+                            border:`2px solid ${C.black}`, borderRadius:"8px",
+                            padding:"4px 8px", fontSize:"12px", fontWeight:900,
+                            fontFamily:"'Nunito',sans-serif", outline:"none",
+                            boxShadow:`2px 2px 0 ${C.black}`, boxSizing:"border-box" }}/>
                       ) : (
-                        <div
-                          onClick={()=>setEditingDayTitle(dayIdx)}
-                          style={{
-                            marginTop:   "6px",
-                            fontSize:    "12px",
-                            fontWeight:  800,
-                            color:       dayTitles[dayIdx] ? C.black : "#bbb",
-                            fontFamily:  "'Nunito',sans-serif",
-                            cursor:      "pointer",
-                            padding:     "3px 6px",
-                            borderRadius:"6px",
-                            border:      `2px dashed ${dayTitles[dayIdx]?"#aaa":"#ddd"}`,
-                            display:     "inline-flex",
-                            alignItems:  "center",
-                            gap:         "4px",
-                            transition:  "border-color .15s",
-                          }}
-                          title="Click to add a title for this day">
-                          {dayTitles[dayIdx] || "＋ Add day title"}
-                          {dayTitles[dayIdx] && <span style={{ fontSize:"10px",opacity:.5 }}>✏️</span>}
+                        <div onClick={()=>setEditingDayTitle(dayIdx)}
+                          style={{ marginTop:"5px", fontSize:"11px", fontWeight:800,
+                            color:dayTitles[dayIdx]?C.black:"#bbb",
+                            fontFamily:"'Nunito',sans-serif", cursor:"pointer",
+                            padding:"2px 6px", borderRadius:"6px",
+                            border:`2px dashed ${dayTitles[dayIdx]?"#aaa":"#ddd"}`,
+                            display:"inline-flex", alignItems:"center", gap:"4px" }}>
+                          {dayTitles[dayIdx] || "＋ day title"}
+                          {dayTitles[dayIdx]&&<span style={{fontSize:"9px",opacity:.5}}>✏️</span>}
                         </div>
                       )}
                     </div>
 
                     {dayObj.places.length===0&&(
-                      <p style={{ color:"#bbb",fontSize:"13px",textAlign:"center",
-                        padding:"24px 0",fontWeight:800,fontStyle:"italic" }}>
-                        Drop places here ↓
+                      <p style={{ color:"#ccc", fontSize:"12px", textAlign:"center",
+                        padding:"20px 0", fontWeight:800, fontStyle:"italic", flexShrink:0 }}>
+                        Drop here ↓
                       </p>
                     )}
 
@@ -2108,8 +2188,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       <div key={loc.id}
                         onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                         onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
-                        onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,dayIdx,locIdx);}}
-                        style={{ borderTop:"3px solid transparent",transition:"border-color .1s" }}>
+                        onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,dayIdx,locIdx);}}>
                         <ItineraryCard loc={loc} currentMember={currentMember}
                           members={trip.members} onVote={handleToggleVote}
                           onEdit={setEditLoc}
@@ -2117,14 +2196,16 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                             setItinerary(prev=>prev.map(d=>({...d,places:d.places.filter(p=>p.id!==id)})));
                             deleteLocation(id);
                           }}
+                          onMoveUp={locIdx>0?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx-1):null}
+                          onMoveDown={locIdx<dayObj.places.length-1?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx+1):null}
                           onDragStart={e=>handleDragStart(e,dayIdx,locIdx)}/>
                       </div>
                     ))}
                   </div>
                 ))}
               </div>
-            </>
-          )}
+            </div>
+          </div>
         </>}
       </div>
 
