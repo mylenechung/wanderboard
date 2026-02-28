@@ -339,6 +339,25 @@ export async function deleteCheckItem(itemId) {
 }
 
 // ─── SESSION (stays in localStorage — device-only) ───────────
+/** Fetch trip info card for a trip. */
+export async function fetchTripInfo(tripId) {
+  const { data, error } = await supabase
+    .from("trip_info")
+    .select("*")
+    .eq("trip_id", tripId)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.fields : null;
+}
+
+/** Save (upsert) trip info card for a trip. */
+export async function saveTripInfo(tripId, fields) {
+  const { error } = await supabase
+    .from("trip_info")
+    .upsert({ trip_id: tripId, fields }, { onConflict: "trip_id" });
+  if (error) throw error;
+}
+
 export function saveSession(tripId, member) {
   try { localStorage.setItem(`wb2_session_${tripId}`, JSON.stringify(member)); } catch {}
 }
