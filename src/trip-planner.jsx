@@ -447,10 +447,10 @@ function DirectoryRow({ loc, onEdit, onDelete, members }) {
             {menuOpen && (
               <div
                 style={{
-                  position:"absolute", right:0, top:"calc(100% + 4px)",
+                  position:"absolute", right:0, bottom:"calc(100% + 4px)",
                   background:C.white, border:`3px solid ${C.black}`,
                   borderRadius:"12px", boxShadow:`4px 4px 0 ${C.black}`,
-                  zIndex:50, overflow:"hidden", minWidth:"120px"
+                  zIndex:500, overflow:"hidden", minWidth:"120px"
                 }}
                 onClick={e => e.stopPropagation()}
               >
@@ -833,7 +833,8 @@ function AreaGroup({ area, locs, members, onEdit, onDelete }) {
       border:       `3px solid ${C.black}`,
       borderRadius: "20px",
       boxShadow:    `5px 5px 0 ${C.black}`,
-      overflow:     "hidden",
+      overflow:     "visible",
+      position:     "relative",
     }}>
       {/* Group header */}
       <div
@@ -848,6 +849,7 @@ function AreaGroup({ area, locs, members, onEdit, onDelete }) {
           borderBottom: open ? `2px solid #F0EAE0` : "none",
           userSelect:  "none",
           transition:  "background .15s",
+          borderRadius: open ? "17px 17px 0 0" : "17px",
         }}>
         <span style={{
           background:   area==="📌 No Area" ? "#eee" : ac,
@@ -1186,6 +1188,21 @@ function EditTripModal({ trip, onSave, onClose }) {
    HOME SCREEN
 ══════════════════════════════════════════════════════════ */
 function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDuplicateTrip }) {
+  const [creatorUnlocked, setCreatorUnlocked] = useState(false);
+  const [showGate, setShowGate] = useState(false);
+  const [gateInput, setGateInput] = useState("");
+  const [gateError, setGateError] = useState(false);
+
+  function handleCreatorUnlock() {
+    if(gateInput === "myearoundtheworld0223") {
+      setCreatorUnlocked(true);
+      setShowGate(false);
+      setGateInput("");
+      setGateError(false);
+    } else {
+      setGateError(true);
+    }
+  }
   return (
     <div style={{ minHeight:"100vh",background:C.pink,fontFamily:"'Nunito',sans-serif",paddingBottom:"60px" }}>
       {/* Hero */}
@@ -1212,9 +1229,10 @@ function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDupl
           textShadow:`2px 2px 0 ${C.black}` }}>
           Plan trips together. Every voice, every place! ✈️
         </p>
-        <PillBtn onClick={onNewTrip} color={C.yellow} style={{ fontSize:"18px",padding:"16px 40px" }}>
-          ＋ New Trip
-        </PillBtn>
+        {creatorUnlocked
+          ? <PillBtn onClick={onNewTrip} color={C.yellow} style={{ fontSize:"18px",padding:"16px 40px" }}>＋ New Trip</PillBtn>
+          : <PillBtn onClick={()=>setShowGate(true)} color={C.yellow} style={{ fontSize:"18px",padding:"16px 40px" }}>＋ New Trip</PillBtn>
+        }
       </div>
 
       {/* Trip grid */}
@@ -1224,7 +1242,7 @@ function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDupl
             <Blob size={88} mood="wink" color={C.orange} style={{ margin:"0 auto 16px" }}/>
             <h2 style={{ fontWeight:900,fontSize:"22px",color:C.black,marginBottom:"8px" }}>No trips yet!</h2>
             <p style={{ fontWeight:700,color:"#333",marginBottom:"24px" }}>Start your first adventure 🌍</p>
-            <PillBtn onClick={onNewTrip} color={C.orange} textColor={C.white}>＋ Create First Trip</PillBtn>
+            <PillBtn onClick={creatorUnlocked?onNewTrip:()=>setShowGate(true)} color={C.orange} textColor={C.white}>＋ Create First Trip</PillBtn>
           </Card>
         ):(
           <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))",gap:"20px" }}>
@@ -1239,7 +1257,7 @@ function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDupl
             })}
 
             {/* Add new tile */}
-            <div onClick={onNewTrip}
+            <div onClick={creatorUnlocked?onNewTrip:()=>setShowGate(true)}
               style={{ border:`3px dashed ${C.black}`,borderRadius:"20px",
                 display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
                 padding:"40px 20px",cursor:"pointer",minHeight:"180px",
@@ -1253,6 +1271,49 @@ function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDupl
           </div>
         )}
       </div>
+
+      {/* Creator gate modal */}
+      {showGate&&(
+        <div onClick={()=>{setShowGate(false);setGateInput("");setGateError(false);}}
+          style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,
+            display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:C.white,border:`4px solid ${C.black}`,borderRadius:"24px",
+              boxShadow:`8px 8px 0 ${C.black}`,width:"100%",maxWidth:"360px",padding:"32px 28px",
+              fontFamily:"'Nunito',sans-serif",textAlign:"center" }}>
+            <div style={{ fontSize:"48px",marginBottom:"12px" }}>🔐</div>
+            <h3 style={{ fontWeight:900,fontSize:"20px",color:C.black,margin:"0 0 8px" }}>
+              Creator Access
+            </h3>
+            <p style={{ fontSize:"13px",color:"#888",fontWeight:700,margin:"0 0 20px" }}>
+              Enter the creator password to make a new trip.
+            </p>
+            <input
+              autoFocus
+              type="password"
+              value={gateInput}
+              onChange={e=>{setGateInput(e.target.value);setGateError(false);}}
+              onKeyDown={e=>e.key==="Enter"&&handleCreatorUnlock()}
+              placeholder="Password"
+              style={{ width:"100%",boxSizing:"border-box",
+                background:gateError?"#FFF0F0":C.cream,
+                border:`3px solid ${gateError?"#E85D4A":C.black}`,
+                borderRadius:"12px",padding:"12px 16px",fontSize:"15px",
+                fontFamily:"'Nunito',sans-serif",fontWeight:700,
+                outline:"none",boxShadow:`3px 3px 0 ${C.black}`,marginBottom:"8px" }}
+            />
+            {gateError&&(
+              <p style={{ fontSize:"12px",color:"#E85D4A",fontWeight:900,margin:"0 0 12px" }}>
+                Wrong password. Try again.
+              </p>
+            )}
+            <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end",marginTop:"16px" }}>
+              <PillBtn small color={C.cream} onClick={()=>{setShowGate(false);setGateInput("");setGateError(false);}}>Cancel</PillBtn>
+              <PillBtn small color={C.orange} textColor={C.white} onClick={handleCreatorUnlock}>Unlock ✓</PillBtn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1568,7 +1629,15 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
     setSaving(true);
     try {
       const updated = await updateLocation(editLoc.id, form);
+      // Update in trip.locations (Places tab)
       onUpdateTrip({...trip, locations:locations.map(l=>l.id===editLoc.id?updated:l)});
+      // Also sync into itinerary state so Itinerary tab reflects the change
+      if(itinerary) {
+        setItinerary(prev=>prev.map(day=>({
+          ...day,
+          places: day.places.map(p=>p.id===editLoc.id ? {...p,...updated} : p)
+        })));
+      }
       setEditLoc(null);
     } catch(e){ console.error(e); alert("Could not save edit."); }
     finally{ setSaving(false); }
