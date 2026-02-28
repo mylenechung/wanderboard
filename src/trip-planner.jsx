@@ -1419,6 +1419,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [filterMember,setFilterMember] = useState(null);
   const [showAddLink,setShowAddLink] = useState(false);
   const [linkDraft,setLinkDraft] = useState({name:"",url:"",description:""});
+  const [panelOpen,setPanelOpen] = useState(true);
 
   // ── Persist last-viewed tab ───────────────────────────────
   useEffect(()=>{
@@ -2087,18 +2088,42 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
           </div>
         </>}
         {tab==="itinerary"&&<>
-          {/* ── Itinerary Board ── */}
-          <div style={{ display:"flex", gap:"12px", alignItems:"flex-start",
-            minHeight:"calc(100vh - 120px)", overflow:"visible" }}>
 
-            {/* ── LEFT PANEL: Unassigned Places ── */}
+          {/* ── MOBILE BACKDROP when drawer open ── */}
+          <div
+            id="wb-drawer-backdrop"
+            onClick={()=>setPanelOpen(false)}
+            style={{
+              position:"fixed", inset:0, background:"rgba(0,0,0,.4)",
+              zIndex:199, display:"none", // shown via CSS on small screens
+            }}
+          />
+
+          {/* ── COLLAPSIBLE DRAWER (fixed, left side) ── */}
+          <div style={{
+            position:"fixed",
+            top:"110px",
+            left: panelOpen ? "0px" : "-302px",
+            width:"330px",
+            bottom:0,
+            zIndex:200,
+            display:"flex",
+            flexDirection:"row",
+            transition:"left .28s cubic-bezier(.4,0,.2,1)",
+          }}>
+            {/* Panel body */}
             <div style={{
-              width:"340px", minWidth:"320px", flexShrink:0,
-              background:C.white, border:`3px solid ${C.black}`,
-              borderRadius:"20px", boxShadow:`5px 5px 0 ${C.black}`,
+              width:"302px", flexShrink:0,
+              background:C.white,
+              borderRight:`3px solid ${C.black}`,
+              borderTop:`3px solid ${C.black}`,
+              borderTopLeftRadius:"0px",
+              borderTopRightRadius:"0px",
+              boxShadow:`4px 4px 0 ${C.black}`,
               display:"flex", flexDirection:"column",
-              alignSelf:"flex-start",
+              overflowY:"auto",
             }}>
+              {/* Header */}
               <div style={{ padding:"14px 16px 10px", borderBottom:`2px solid #eee`, flexShrink:0 }}>
                 <div style={{ fontWeight:900, fontSize:"15px", color:C.black,
                   fontFamily:"'Nunito',sans-serif", display:"flex", alignItems:"center", gap:"8px" }}>
@@ -2106,23 +2131,23 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   <span style={{ background:C.orange, color:C.white, borderRadius:"999px",
                     padding:"1px 8px", fontSize:"11px", fontWeight:900,
                     border:`2px solid ${C.black}`, boxShadow:`1px 1px 0 ${C.black}` }}>
-                    {itinerary ? itinerary[0]?.places?.length || 0 : locations.length}
+                    {itinerary ? itinerary[0]?.places?.length||0 : locations.length}
                   </span>
                 </div>
                 <p style={{ fontSize:"11px", color:"#999", fontWeight:700, margin:"4px 0 0",
                   fontFamily:"'Nunito',sans-serif" }}>Drag to a day →</p>
               </div>
-              <div style={{ padding:"12px", flex:1 }}
+
+              {/* Place list */}
+              <div style={{ padding:"10px", flex:1 }}
                 onDragOver={e=>{e.preventDefault();e.currentTarget.style.background="#FFF5E4"}}
                 onDragLeave={e=>{e.currentTarget.style.background="transparent"}}
                 onDrop={e=>{e.currentTarget.style.background="transparent";handleDrop(e,-1)}}>
-                {(itinerary ? itinerary[0]?.places || [] : []).length === 0 && (
-                  <p style={{ color:"#ccc", fontSize:"12px", textAlign:"center",
-                    padding:"20px 0", fontWeight:800, fontStyle:"italic" }}>
-                    All placed! ✓
-                  </p>
+                {(itinerary?itinerary[0]?.places||[]:[]).length===0&&(
+                  <p style={{ color:"#ccc",fontSize:"12px",textAlign:"center",
+                    padding:"20px 0",fontWeight:800,fontStyle:"italic" }}>All placed! ✓</p>
                 )}
-                {(itinerary ? itinerary[0]?.places || [] : []).map((loc,locIdx)=>(
+                {(itinerary?itinerary[0]?.places||[]:[]).map((loc,locIdx)=>(
                   <div key={loc.id}
                     onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                     onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
@@ -2140,6 +2165,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   </div>
                 ))}
               </div>
+
+              {/* Add place */}
               <div style={{ padding:"10px 12px", borderTop:`2px solid #eee`, flexShrink:0 }}>
                 <button onClick={()=>setShowAddLoc(true)} style={{
                   width:"100%", background:C.yellow, border:`2px solid ${C.black}`,
@@ -2149,90 +2176,193 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               </div>
             </div>
 
-            {/* ── RIGHT: Day Columns ── */}
-            <div style={{ flex:1, display:"flex", flexDirection:"column",
-              overflow:"visible", minWidth:0 }}>
+            {/* Toggle tab — always peeks out on right edge */}
+            <div
+              onClick={()=>setPanelOpen(o=>!o)}
+              style={{
+                width:"28px", flexShrink:0,
+                alignSelf:"flex-start", marginTop:"20px",
+                background:C.yellow,
+                border:`3px solid ${C.black}`, borderLeft:"none",
+                borderRadius:"0 12px 12px 0",
+                boxShadow:`3px 3px 0 ${C.black}`,
+                cursor:"pointer",
+                display:"flex", flexDirection:"column",
+                alignItems:"center",
+                padding:"10px 0 14px", gap:"6px",
+                userSelect:"none",
+              }}>
+              <span style={{
+                fontSize:"11px", fontWeight:900, color:C.black, lineHeight:1,
+                transform: panelOpen?"rotate(0deg)":"rotate(180deg)",
+                transition:"transform .28s", display:"inline-block",
+              }}>◀</span>
+              <span style={{
+                writingMode:"vertical-rl", textOrientation:"mixed",
+                transform:"rotate(180deg)",
+                fontSize:"10px", fontWeight:900, color:C.black,
+                fontFamily:"'Nunito',sans-serif",
+                letterSpacing:"0.5px", whiteSpace:"nowrap",
+              }}>
+                {(itinerary?itinerary[0]?.places?.length||0:locations.length)} unassigned
+              </span>
+              {(itinerary?itinerary[0]?.places?.length||0:locations.length)>0&&(
+                <div style={{ width:8, height:8, borderRadius:"50%",
+                  background:C.orange, border:`1px solid ${C.black}` }}/>
+              )}
+            </div>
+          </div>
 
-              {/* Header row */}
-              <div style={{ display:"flex", alignItems:"center", gap:"12px",
-                marginBottom:"8px", flexShrink:0, flexWrap:"wrap" }}>
-                <h2 style={{ fontWeight:900, fontSize:"20px", color:C.black, margin:0, flex:1 }}>
-                  <img src={ASSETS.tab_itinerary} style={{width:22,height:22,objectFit:"contain",
-                    verticalAlign:"middle",marginRight:"6px"}}/>Your {days}-Day Plan
-                </h2>
-                {/* +Title button */}
-                <button onClick={()=>{ setTitleCardDraft({label:"",color:C.black}); setShowTitleCardModal(true); }} style={{
-                  background:C.black, color:C.white, border:`2px solid ${C.black}`,
-                  borderRadius:"999px", padding:"6px 16px", fontSize:"12px", fontWeight:900,
-                  cursor:"pointer", boxShadow:`2px 2px 0 ${C.black}`,
-                  fontFamily:"'Nunito',sans-serif" }}>＋ Title Card</button>
+          {/* ── MAIN AREA — shifts right when drawer open (desktop), stays put on mobile ── */}
+          <div
+            id="wb-itinerary-main"
+            style={{
+              marginLeft:"36px", // always leave room for the toggle tab
+              transition:"padding-left .28s cubic-bezier(.4,0,.2,1)",
+              paddingLeft: panelOpen ? "302px" : "0px",
+              minWidth:0,
+            }}>
+
+            {/* Header */}
+            <div style={{ display:"flex", alignItems:"center", gap:"12px",
+              marginBottom:"8px", flexWrap:"wrap" }}>
+              <h2 style={{ fontWeight:900, fontSize:"20px", color:C.black, margin:0, flex:1 }}>
+                <img src={ASSETS.tab_itinerary} style={{width:22,height:22,objectFit:"contain",
+                  verticalAlign:"middle",marginRight:"6px"}}/>Your {days}-Day Plan
+              </h2>
+              <button onClick={()=>{ setTitleCardDraft({label:"",color:C.black}); setShowTitleCardModal(true); }} style={{
+                background:C.black, color:C.white, border:`2px solid ${C.black}`,
+                borderRadius:"999px", padding:"6px 16px", fontSize:"12px", fontWeight:900,
+                cursor:"pointer", boxShadow:`2px 2px 0 ${C.black}`,
+                fontFamily:"'Nunito',sans-serif" }}>＋ Title Card</button>
                 <button onClick={()=>{
-                    const el = document.getElementById("wb-print-itinerary");
-                    if(el){ el.style.display="block"; setTimeout(()=>{ window.print(); setTimeout(()=>{ el.style.display="none"; },500); },100); }
+                    if(!itinerary) return;
+                    const days = itinerary.slice(1);
+                    const DAY_COLORS = ["#FF6B35","#00C4CC","#FF69B4","#7ED321","#9B59B6","#F5C518","#E91E63","#3F51B5"];
+                    const mapsBase = "https://www.google.com/maps/search/?api=1&query=";
+                    const html = `<!DOCTYPE html><html><head>
+                      <meta charset="utf-8"/>
+                      <title>${trip.name} — Itinerary</title>
+                      <style>
+                        body{font-family:'Helvetica Neue',Arial,sans-serif;color:#111;padding:20px;max-width:800px;margin:0 auto;}
+                        h1{font-size:26px;font-weight:900;margin:0 0 4px;}
+                        .trip-meta{font-size:13px;color:#666;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #111;}
+                        .day{margin-bottom:28px;page-break-inside:avoid;}
+                        .day-header{display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:2px solid #eee;margin-bottom:12px;}
+                        .day-badge{border-radius:8px;padding:4px 14px;font-weight:900;font-size:14px;border:2px solid #111;}
+                        .day-title{font-size:13px;color:#888;font-style:italic;}
+                        table{width:100%;border-collapse:collapse;}
+                        tr{border-bottom:1px solid #f0f0f0;}
+                        td{padding:8px 8px 8px 0;vertical-align:top;font-size:13px;}
+                        .num{color:#bbb;font-weight:900;width:20px;}
+                        .name{font-weight:900;font-size:14px;}
+                        .area{color:#888;font-size:11px;margin-top:2px;}
+                        .notes{color:#555;font-size:12px;line-height:1.5;}
+                        a{color:#0070f3;text-decoration:none;}
+                        .footer{margin-top:32px;padding-top:12px;border-top:2px solid #eee;font-size:11px;color:#aaa;}
+                        @media print{@page{margin:15mm;size:A4;}}
+                      </style>
+                    </head><body>
+                      <h1>✈️ ${trip.name}</h1>
+                      <div class="trip-meta">
+                        ${trip.destination ? `📍 ${trip.destination} &nbsp;·&nbsp; ` : ""}
+                        ${trip.startDate ? new Date(trip.startDate).toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"}) : ""}
+                        ${trip.endDate ? ` → ${new Date(trip.endDate).toLocaleDateString("en-US",{weekday:"long",year:"numeric",month:"long",day:"numeric"})}` : ""}
+                      </div>
+                      ${days.filter(d=>d.places.filter(p=>!p._isTitleCard).length>0).map((dayObj,di)=>{
+                        const dc = DAY_COLORS[di%DAY_COLORS.length];
+                        const startD = trip.startDate ? new Date(new Date(trip.startDate).getTime()+(di*86400000)).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"}) : "";
+                        const title = dayTitles[di] ? ` — ${dayTitles[di]}` : "";
+                        return `<div class="day">
+                          <div class="day-header">
+                            <span class="day-badge" style="background:${dc}">Day ${dayObj.day}</span>
+                            <span style="font-size:13px;font-weight:700;color:#444">${startD}</span>
+                            ${title ? `<span class="day-title">${title}</span>` : ""}
+                          </div>
+                          <table><tbody>
+                          ${dayObj.places.filter(p=>!p._isTitleCard).map((p,pi)=>{
+                            const mapsUrl = mapsBase+encodeURIComponent((p.name||"")+(p.area?" "+p.area:""));
+                            return `<tr>
+                              <td class="num">${pi+1}.</td>
+                              <td><div class="name"><a href="${mapsUrl}" target="_blank">${p.name||""}</a></div>${p.area?`<div class="area">📍 ${p.area}</div>`:""}</td>
+                              <td class="notes">${p.notes||""}</td>
+                            </tr>`;
+                          }).join("")}
+                          </tbody></table>
+                        </div>`;
+                      }).join("")}
+                      <div class="footer">Generated by Wanderboard · ${new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})}</div>
+                    </body></html>`;
+                    const w = window.open("","_blank","width=800,height=700");
+                    if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
                   }} style={{ background:C.white, border:`2px solid ${C.black}`, borderRadius:"999px",
                   padding:"6px 14px", fontSize:"12px", fontWeight:900, cursor:"pointer",
                   boxShadow:`2px 2px 0 ${C.black}`, fontFamily:"'Nunito',sans-serif" }}>
                   📄 Export PDF
                 </button>
-              </div>
+            </div>
 
-              {/* Member avatar filter bar */}
-              <div style={{ display:"flex", alignItems:"center", gap:"8px",
-                marginBottom:"12px", flexShrink:0, flexWrap:"wrap" }}>
-                <span style={{ fontSize:"11px", fontWeight:900, color:"#999",
-                  fontFamily:"'Nunito',sans-serif", whiteSpace:"nowrap" }}>Filter by:</span>
-                {trip.members.map(m=>{
-                  const isActive = filterMember?.id===m.id;
-                  return (
-                    <div key={m.id} onClick={()=>setFilterMember(isActive?null:m)}
-                      title={m.name}
-                      style={{ cursor:"pointer", position:"relative",
-                        transform: isActive?"scale(1.15)":"scale(1)",
-                        transition:"transform .15s" }}>
-                      <div style={{ width:34, height:34, borderRadius:"50%",
-                        overflow:"hidden", border:`3px solid ${isActive?C.orange:C.black}`,
-                        background:m.avatar?m.avatar.color:C.yellow,
-                        boxShadow: isActive?`0 0 0 2px ${C.orange}`:"none" }}>
-                        {m.avatar
-                          ? <Blob size={34} mood={m.avatar.mood} color={m.avatar.color} avatarId={m.avatar.id||m.id}/>
-                          : <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:"16px" }}>👤</div>
-                        }
-                      </div>
-                      {isActive && <div style={{ position:"absolute",bottom:-2,right:-2,
-                        background:C.orange,borderRadius:"50%",width:12,height:12,
-                        border:`2px solid ${C.white}`,
-                        display:"flex",alignItems:"center",justifyContent:"center",
-                        color:C.white,fontWeight:900,fontSize:"7px" }}>✓</div>}
+            {/* Avatar filter bar */}
+            <div style={{ display:"flex", alignItems:"center", gap:"8px",
+              marginBottom:"12px", flexWrap:"wrap" }}>
+              <span style={{ fontSize:"11px", fontWeight:900, color:"#999",
+                fontFamily:"'Nunito',sans-serif", whiteSpace:"nowrap" }}>Filter by:</span>
+              {trip.members.map(m=>{
+                const isActive = filterMember?.id===m.id;
+                return (
+                  <div key={m.id} onClick={()=>setFilterMember(isActive?null:m)}
+                    title={m.name}
+                    style={{ cursor:"pointer", position:"relative",
+                      transform: isActive?"scale(1.15)":"scale(1)",
+                      transition:"transform .15s" }}>
+                    <div style={{ width:34, height:34, borderRadius:"50%",
+                      overflow:"hidden", border:`3px solid ${isActive?C.orange:C.black}`,
+                      boxShadow: isActive?`0 0 0 2px ${C.orange}`:"none" }}>
+                      {m.avatar
+                        ? <Blob size={34} mood={m.avatar.mood} color={m.avatar.color} avatarId={m.avatar.id||m.id}/>
+                        : <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
+                            height:"100%",fontSize:"16px",background:C.yellow }}>👤</div>
+                      }
                     </div>
-                  );
-                })}
-                {filterMember && (
-                  <button onClick={()=>setFilterMember(null)}
-                    style={{ background:C.cream, border:`2px solid ${C.black}`, borderRadius:"999px",
-                      padding:"3px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer",
-                      fontFamily:"'Nunito',sans-serif" }}>✕ Clear</button>
-                )}
-              </div>
+                    {isActive&&<div style={{ position:"absolute",bottom:-2,right:-2,
+                      background:C.orange,borderRadius:"50%",width:12,height:12,
+                      border:`2px solid ${C.white}`,display:"flex",alignItems:"center",
+                      justifyContent:"center",color:C.white,fontWeight:900,fontSize:"7px" }}>✓</div>}
+                  </div>
+                );
+              })}
+              {filterMember&&(
+                <button onClick={()=>setFilterMember(null)}
+                  style={{ background:C.cream, border:`2px solid ${C.black}`, borderRadius:"999px",
+                    padding:"3px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer",
+                    fontFamily:"'Nunito',sans-serif" }}>✕ Clear</button>
+              )}
+            </div>
 
-              {/* Day columns scroll area */}
-              <div style={{
-                display:"flex", gap:"14px", overflowX:"auto", overflowY:"visible",
-                paddingBottom:"40px", alignItems:"flex-start",
-                flex:1, scrollbarWidth:"thin",
-                paddingRight:"20px",
-              }}>
-                {(itinerary ? itinerary.slice(1) : Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>{
-                  // Apply member filter
-                  const visiblePlaces = filterMember
-                    ? dayObj.places.filter(p => p._isTitleCard || (p.votes||[]).includes(filterMember.name))
-                    : dayObj.places;
-                  // Hide empty day columns when filtering
-                  if(filterMember && visiblePlaces.filter(p=>!p._isTitleCard).length===0) return null;
-                  return (
+            {/* Day columns */}
+            <div style={{
+              display:"flex", gap:"14px", overflowX:"auto", overflowY:"visible",
+              paddingBottom:"40px", alignItems:"flex-start",
+              scrollbarWidth:"thin", paddingRight:"20px",
+            }}>
+              {(itinerary?itinerary.slice(1):Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>{
+                const visiblePlaces = filterMember
+                  ? dayObj.places.filter(p=>p._isTitleCard||(p.votes||[]).includes(filterMember.name))
+                  : dayObj.places;
+                const noMatchForFilter = filterMember && visiblePlaces.filter(p=>!p._isTitleCard).length===0;
+
+                const dayColors=["#FF6B35","#00C4CC","#FF69B4","#7ED321","#9B59B6","#F5C518","#E91E63","#3F51B5"];
+                const dc = dayColors[dayIdx%dayColors.length];
+                const startDateObj = trip.startDate?new Date(trip.startDate):null;
+                const dayDate = startDateObj
+                  ? new Date(startDateObj.getTime()+(dayIdx*86400000))
+                      .toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})
+                  : null;
+
+                return (
                   <div key={dayObj.day}
-                    onDragOver={e=>{e.preventDefault();e.currentTarget.style.outline=`3px dashed ${C.orange}`}}
-                    onDragLeave={e=>{e.currentTarget.style.outline="none"}}
-                    onDrop={e=>{e.currentTarget.style.outline="none";handleDrop(e,dayIdx)}}
+                    onDragOver={e=>e.preventDefault()}
+                    onDrop={e=>handleDrop(e,dayIdx)}
                     style={{
                       background:C.white, border:`3px solid ${C.black}`,
                       borderRadius:"20px", padding:"14px",
@@ -2241,55 +2371,41 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       display:"flex", flexDirection:"column",
                     }}>
                     {/* Day header */}
-                    <div style={{ marginBottom:"12px", flexShrink:0 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-                        <span style={{
-                          background:dayColors[dayIdx%dayColors.length],
-                          border:`3px solid ${C.black}`, borderRadius:"12px",
-                          padding:"4px 14px", fontWeight:900, fontSize:"13px",
-                          color:C.black, boxShadow:`3px 3px 0 ${C.black}`, flexShrink:0,
-                        }}>Day {dayObj.day}</span>
-                        {trip.startDate && (
-                          <span style={{ fontSize:"11px", fontWeight:800, color:"#888" }}>
-                            {new Date(new Date(trip.startDate).getTime()+(dayIdx*86400000))
-                              .toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}
-                          </span>
-                        )}
+                    <div style={{ marginBottom:"10px", flexShrink:0 }}>
+                      <div style={{ display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px" }}>
+                        <span style={{ background:dc,border:`2px solid ${C.black}`,borderRadius:"8px",
+                          padding:"2px 10px",fontSize:"12px",fontWeight:900,
+                          boxShadow:`2px 2px 0 ${C.black}` }}>Day {dayObj.day}</span>
+                        {dayDate&&<span style={{ fontSize:"12px",fontWeight:700,color:"#666" }}>{dayDate}</span>}
+                        <span style={{ fontSize:"11px",color:"#aaa",fontWeight:700,marginLeft:"auto" }}>
+                          {dayObj.places.length} item{dayObj.places.length!==1?"s":""}
+                        </span>
                       </div>
-                      <div style={{ marginTop:"3px", fontSize:"11px", fontWeight:800,
-                        color:"#aaa", fontFamily:"'Nunito',sans-serif" }}>
-                        {dayObj.places.length} item{dayObj.places.length!==1?"s":""}
-                      </div>
-                      {/* Editable day title */}
-                      {editingDayTitle===dayIdx ? (
-                        <input autoFocus value={dayTitles[dayIdx]||""}
-                          onChange={e=>setDayTitles(t=>({...t,[dayIdx]:e.target.value}))}
-                          onBlur={()=>setEditingDayTitle(null)}
-                          onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape")setEditingDayTitle(null)}}
-                          placeholder="e.g. Asakusa & Ueno"
-                          style={{ marginTop:"6px", width:"100%", background:C.yellow,
-                            border:`2px solid ${C.black}`, borderRadius:"8px",
-                            padding:"4px 8px", fontSize:"12px", fontWeight:900,
-                            fontFamily:"'Nunito',sans-serif", outline:"none",
-                            boxShadow:`2px 2px 0 ${C.black}`, boxSizing:"border-box" }}/>
-                      ) : (
+                      {editingDayTitle===dayIdx?(
+                        <input autoFocus
+                          defaultValue={dayTitles[dayIdx]||""}
+                          onBlur={e=>{setDayTitles(dt=>({...dt,[dayIdx]:e.target.value.trim()}));setEditingDayTitle(null);}}
+                          onKeyDown={e=>{ if(e.key==="Enter")e.target.blur(); if(e.key==="Escape")setEditingDayTitle(null); }}
+                          style={{ fontSize:"12px",fontWeight:800,background:C.cream,
+                            border:`2px solid ${C.black}`,borderRadius:"8px",padding:"3px 8px",
+                            width:"100%",fontFamily:"'Nunito',sans-serif",outline:"none" }}/>
+                      ):(
                         <div onClick={()=>setEditingDayTitle(dayIdx)}
-                          style={{ marginTop:"5px", fontSize:"11px", fontWeight:800,
-                            color:dayTitles[dayIdx]?C.black:"#bbb",
-                            fontFamily:"'Nunito',sans-serif", cursor:"pointer",
-                            padding:"2px 6px", borderRadius:"6px",
-                            border:`2px dashed ${dayTitles[dayIdx]?"#aaa":"#ddd"}`,
-                            display:"inline-flex", alignItems:"center", gap:"4px" }}>
-                          {dayTitles[dayIdx] || "＋ day title"}
-                          {dayTitles[dayIdx]&&<span style={{fontSize:"9px",opacity:.5}}>✏️</span>}
+                          style={{ fontSize:"12px",fontWeight:800,
+                            color:dayTitles[dayIdx]?"#333":"#bbb",
+                            cursor:"pointer",padding:"2px 4px",borderRadius:"6px",
+                            fontFamily:"'Nunito',sans-serif",border:"2px solid transparent" }}
+                          onMouseEnter={e=>e.currentTarget.style.borderColor="#eee"}
+                          onMouseLeave={e=>e.currentTarget.style.borderColor="transparent"}>
+                          {dayTitles[dayIdx]||"＋ day title"}
                         </div>
                       )}
                     </div>
 
                     {visiblePlaces.length===0&&(
-                      <p style={{ color:"#ccc", fontSize:"12px", textAlign:"center",
-                        padding:"20px 0", fontWeight:800, fontStyle:"italic", flexShrink:0 }}>
-                        {filterMember ? `No places for ${filterMember.name} here` : "Drop here ↓"}
+                      <p style={{ color:"#ccc",fontSize:"12px",textAlign:"center",
+                        padding:"20px 0",fontWeight:800,fontStyle:"italic",flexShrink:0 }}>
+                        {noMatchForFilter ? "Nothing to see here 👀" : "Drop here ↓"}
                       </p>
                     )}
 
@@ -2311,9 +2427,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       </div>
                     ))}
                   </div>
-                  );
-                })}
-              </div>
+                );
+              })}
             </div>
           </div>
         </>}
@@ -2784,6 +2899,17 @@ export default function App() {
         button, input, textarea { font-family: 'Nunito', sans-serif; }
         input:focus, textarea:focus { outline: none; }
         #wb-print-itinerary { display: none; }
+
+        /* On mobile (≤600px): drawer overlays instead of pushing content */
+        @media (max-width: 600px) {
+          #wb-drawer-backdrop { display: block !important; }
+          #wb-itinerary-main {
+            margin-left: 36px !important;
+            padding-left: 0px !important;
+            transition: none !important;
+          }
+        }
+
         @media print {
           body > * { display: none !important; }
           #wb-print-itinerary { display: block !important; font-family: 'Nunito', sans-serif; }
