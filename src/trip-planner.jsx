@@ -1685,7 +1685,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
       </div>
 
       {/* Main content */}
-      <div style={{ maxWidth: tab==="itinerary" ? "100%" : "960px", margin:"0 auto", padding: tab==="itinerary" ? "16px 16px 0" : "24px 20px 60px" }}>
+      <div style={{ maxWidth: tab==="itinerary" ? "100%" : "960px", margin:"0 auto", padding: tab==="itinerary" ? "16px 0 0" : "24px 20px 60px" }}>
 
         {tab==="places"&&<>
           {/* ── Toolbar ── */}
