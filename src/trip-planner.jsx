@@ -1552,6 +1552,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [editLoc,setEditLoc] = useState(null);
   const [sortByVotes,setSortByVotes] = useState(false);
   const [itinerary,setItinerary] = useState(null);
+  const [itineraryLoaded,setItineraryLoaded] = useState(false);
   const [dragInfo,setDragInfo] = useState(null);
   const [colDragIdx,setColDragIdx] = useState(null); // for dragging entire day columns
   const [dayTitles,setDayTitles] = useState({});
@@ -1579,7 +1580,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   },[tab, trip.id]);
 
   // ── Load itinerary, docs, checklist on mount ─────────────
-  useEffect(()=>{
+  useEffect(()=>{\
+    setItineraryLoaded(false);
     fetchItinerary(trip.id).then(s=>{
       if(s && s.itinerary) {
         let it = s.itinerary;
@@ -1596,6 +1598,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
         for(let i=1;i<=days;i++) buckets.push({day:i,places:[]});
         setItinerary(buckets);
       }
+      setItineraryLoaded(true);
     }).catch(console.error);
 
     fetchDocuments(trip.id).then(setDocs).catch(console.error);
@@ -1604,7 +1607,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
   // ── Persist itinerary whenever it changes ─────────────────
   useEffect(()=>{
-    if(itinerary!==null) {
+    if(itinerary!==null && itineraryLoaded) {
       saveItinerary(trip.id, itinerary, dayTitles, dayNotes).catch(console.error);
     }
   },[itinerary, dayTitles, dayNotes]);
