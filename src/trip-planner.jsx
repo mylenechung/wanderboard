@@ -666,25 +666,32 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
           <PlaceIcon iconId={loc.icon} size={16}/>
         </div>
 
-        {/* Name + area */}
+        {/* Name + area + vote pill */}
         <div style={{ flex:1,minWidth:0 }}>
           <div style={{ fontWeight:900,fontSize:"13px",color:C.black,
             fontFamily:"'Nunito',sans-serif",lineHeight:1.3,
             whiteSpace:"normal",wordBreak:"break-word" }}>
             {loc.name}
           </div>
-          {loc.area && (
-            <span style={{ display:"inline-block",marginTop:"2px",
-              background:ac,border:`2px solid ${C.black}`,borderRadius:"999px",
-              padding:"0px 8px",fontSize:"10px",fontWeight:900,color:C.black,
-              boxShadow:`1px 1px 0 ${C.black}` }}>{loc.area}</span>
-          )}
+          <div style={{ display:"flex",alignItems:"center",gap:"4px",flexWrap:"wrap",marginTop:"3px" }}>
+            {loc.area && (
+              <span style={{ display:"inline-block",
+                background:ac,border:`2px solid ${C.black}`,borderRadius:"999px",
+                padding:"0px 7px",fontSize:"10px",fontWeight:900,color:C.black,
+                boxShadow:`1px 1px 0 ${C.black}` }}>{loc.area}</span>
+            )}
+            {voteCount > 0 && (
+              <span style={{ display:"inline-flex",alignItems:"center",gap:"2px",
+                background:C.orange,border:`2px solid ${C.black}`,borderRadius:"999px",
+                padding:"0px 6px",fontSize:"10px",fontWeight:900,color:C.white,
+                boxShadow:`1px 1px 0 ${C.black}` }}>✓{voteCount}</span>
+            )}
+          </div>
         </div>
 
-        {/* Move arrows + vote + chevron */}
+        {/* Move arrows + chevron only */}
         <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"3px",flexShrink:0 }}>
           <div style={{ display:"flex",alignItems:"center",gap:"4px" }}>
-            {/* Up/down arrows */}
             <div style={{ display:"flex",flexDirection:"column",gap:"1px" }}>
               {onMoveUp&&<button onClick={e=>{e.stopPropagation();onMoveUp();}}
                 style={{ background:C.cream,border:`1px solid ${C.black}`,borderRadius:"4px",
@@ -695,11 +702,6 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
                   cursor:"pointer",padding:"0px 4px",fontSize:"9px",lineHeight:"14px",
                   fontWeight:900 }}>▼</button>}
             </div>
-            {voteCount > 0 && (
-              <span style={{ background:C.orange,border:`2px solid ${C.black}`,borderRadius:"999px",
-                padding:"0px 7px",fontSize:"10px",fontWeight:900,color:C.white,
-                boxShadow:`1px 1px 0 ${C.black}` }}>✓{voteCount}</span>
-            )}
             <span style={{ fontSize:"11px",color:"#999",fontWeight:900,
               transform: open?"rotate(180deg)":"rotate(0deg)",
               transition:"transform .2s",display:"inline-block" }}>▼</span>
@@ -1395,7 +1397,7 @@ function ManageMembersModal({ trip, onUpdate, onClose }) {
    TRIP CANVAS
 ══════════════════════════════════════════════════════════ */
 function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }) {
-  const [tab,setTab] = useState("places");
+  const [tab,setTab] = useState(()=>localStorage.getItem(`wb_tab_${trip.id}`)||"places");
   const [showAddLoc,setShowAddLoc] = useState(false);
   const [editLoc,setEditLoc] = useState(null);
   const [sortByVotes,setSortByVotes] = useState(false);
@@ -1409,11 +1411,19 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [checklist,setChecklist] = useState([]);
   const [newCheckItem,setNewCheckItem] = useState("");
   const [docFilter,setDocFilter] = useState("all");
-  const [groupMode,setGroupMode] = useState(null);
+  const [groupMode,setGroupMode] = useState("type");
   const [showManageMembers,setShowManageMembers] = useState(false);
   const [saving,setSaving] = useState(false);
   const [showTitleCardModal,setShowTitleCardModal] = useState(false);
   const [titleCardDraft,setTitleCardDraft] = useState({label:"",color:C.black});
+  const [filterMember,setFilterMember] = useState(null);
+  const [showAddLink,setShowAddLink] = useState(false);
+  const [linkDraft,setLinkDraft] = useState({name:"",url:"",description:""});
+
+  // ── Persist last-viewed tab ───────────────────────────────
+  useEffect(()=>{
+    localStorage.setItem(`wb_tab_${trip.id}`, tab);
+  },[tab, trip.id]);
 
   // ── Load itinerary, docs, checklist on mount ─────────────
   useEffect(()=>{
@@ -1728,9 +1738,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                 🗂️ {groupMode==="area" ? "Grouped by Area" : "Group by Area"}
               </button>
               <button
-                onClick={()=>setGroupMode(g=>g==="name" ? null : "name")}
+                onClick={()=>setGroupMode(g=>g==="type" ? null : "type")}
                 style={{
-                  background:   groupMode==="name" ? C.cyan : C.white,
+                  background:   groupMode==="type" ? C.cyan : C.white,
                   border:       `3px solid ${C.black}`,
                   borderRadius: "999px",
                   padding:      "8px 18px",
@@ -1745,7 +1755,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   gap:          "5px",
                   whiteSpace:   "nowrap",
                 }}>
-                🔤 {groupMode==="name" ? "Grouped by Name" : "Group by Name"}
+                🏷️ {groupMode==="type" ? "Grouped by Type" : "Group by Type"}
               </button>
             </div>
           )}
@@ -1796,19 +1806,21 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               </DirectoryContainer>
             );
 
-            // Group by area or by first letter of name
+            // Group by area, type, or show flat list
             const groups = {};
             filtered.forEach(loc => {
               let key;
-              if(groupMode==="name") {
-                const first = (loc.name||"").trim()[0]||"#";
-                key = /[a-zA-Z]/.test(first) ? first.toUpperCase() : "#";
+              if(groupMode==="type") {
+                const icObj = PLACE_ICONS.find(ic=>ic.id===(loc.icon||"pin"));
+                key = icObj?.label || "Place";
               } else {
                 key = (loc.area||"").trim() || "📌 No Area";
               }
               if(!groups[key]) groups[key] = [];
-              groups[key].push(loc);
+              groups[key].unshift(loc); // new places at top
             });
+            // restore chronological within each group (unshift reverses, so re-sort by createdAt desc)
+            Object.values(groups).forEach(arr => arr.sort((a,b)=>b.createdAt-a.createdAt));
 
             const sortedKeys = Object.keys(groups).sort((a,b)=>{
               if(a==="📌 No Area") return 1;
@@ -1881,15 +1893,15 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               ))}
             </div>
 
-            {/* Doc list */}
-            {docs.filter(d=>docFilter==="all"||d.category===docFilter).length===0 ? (
+            {/* Doc list — excludes Links category */}
+            {docs.filter(d=>d.category!=="Links"&&(docFilter==="all"||d.category===docFilter)).length===0 ? (
               <div style={{ textAlign:"center",padding:"32px 0",color:"#bbb",
                 fontSize:"14px",fontWeight:800,fontFamily:"'Nunito',sans-serif" }}>
                 No documents yet — hit Upload to add one!
               </div>
             ) : (
               <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
-                {docs.filter(d=>docFilter==="all"||d.category===docFilter).map(doc=>{
+                {docs.filter(d=>d.category!=="Links"&&(docFilter==="all"||d.category===docFilter)).map(doc=>{
                   const CAT_ICONS = {"Flights":"✈️","Hotels":"🏨","Transport":"🚌","Food Reservations":"🍽️","Other":"📄"};
                   const CAT_COLORS = {"Flights":C.cyan,"Hotels":C.pink,"Transport":C.lime,"Food Reservations":C.orange,"Other":C.yellow};
                   return (
@@ -1932,6 +1944,67 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                         </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── LINKS SECTION ── */}
+            <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",
+              marginTop:"32px",marginBottom:"14px" }}>
+              <h2 style={{ fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:"20px",
+                color:C.black,margin:0,display:"flex",alignItems:"center",gap:"8px" }}>🔗 Important Links</h2>
+              <button onClick={()=>{ setLinkDraft({name:"",url:"",description:""}); setShowAddLink(true); }}
+                style={{ background:C.cyan,border:`3px solid ${C.black}`,borderRadius:"999px",
+                  padding:"6px 16px",fontSize:"13px",fontWeight:900,color:C.black,cursor:"pointer",
+                  boxShadow:`3px 3px 0 ${C.black}`,fontFamily:"'Nunito',sans-serif" }}>
+                ＋ Add Link
+              </button>
+            </div>
+
+            {docs.filter(d=>d.category==="Links").length===0 ? (
+              <div style={{ textAlign:"center",padding:"24px 0",color:"#bbb",
+                fontSize:"13px",fontWeight:800,fontFamily:"'Nunito',sans-serif" }}>
+                No links yet — add entry forms, apps to download, booking sites, etc.
+              </div>
+            ) : (
+              <div style={{ display:"grid",
+                gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",
+                gap:"12px", marginBottom:"8px" }}>
+                {docs.filter(d=>d.category==="Links").map(link=>{
+                  const [linkName, linkDesc] = (link.name||"").split("||");
+                  return (
+                  <div key={link.id}
+                    style={{ background:C.white,border:`3px solid ${C.black}`,
+                      borderRadius:"16px",boxShadow:`4px 4px 0 ${C.black}`,
+                      padding:"14px 14px 12px",
+                      display:"flex",flexDirection:"column",gap:"6px",
+                      transition:"transform .1s",cursor:"pointer" }}
+                    onMouseEnter={e=>e.currentTarget.style.transform="translate(-2px,-2px)"}
+                    onMouseLeave={e=>e.currentTarget.style.transform="none"}
+                    onClick={()=>window.open(link.data,"_blank")}>
+                    <div style={{ fontSize:"24px",marginBottom:"2px" }}>🔗</div>
+                    <div style={{ fontWeight:900,fontSize:"14px",color:C.black,
+                      fontFamily:"'Nunito',sans-serif",lineHeight:1.3 }}>
+                      {linkName}
+                    </div>
+                    {linkDesc && (
+                      <div style={{ fontSize:"12px",color:"#666",fontWeight:600,
+                        fontFamily:"'Nunito',sans-serif",lineHeight:1.4,flex:1 }}>
+                        {linkDesc}
+                      </div>
+                    )}
+                    <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",
+                      marginTop:"4px" }}>
+                      <span style={{ fontSize:"10px",color:"#aaa",fontWeight:700,
+                        fontFamily:"'Nunito',sans-serif" }}>
+                        by {link.uploadedBy}
+                      </span>
+                      <button onClick={e=>{e.stopPropagation();handleDeleteDoc(link.id);}}
+                        style={{ background:"#fee",border:`1px solid ${C.black}`,borderRadius:"6px",
+                          padding:"2px 7px",fontSize:"11px",fontWeight:900,cursor:"pointer" }}>🗑</button>
+                    </div>
+                  </div>
                   );
                 })}
               </div>
@@ -2020,11 +2093,11 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
             {/* ── LEFT PANEL: Unassigned Places ── */}
             <div style={{
-              width:"200px", minWidth:"180px", flexShrink:0,
+              width:"340px", minWidth:"320px", flexShrink:0,
               background:C.white, border:`3px solid ${C.black}`,
               borderRadius:"20px", boxShadow:`5px 5px 0 ${C.black}`,
               display:"flex", flexDirection:"column",
-              position:"sticky", top:"110px", alignSelf:"flex-start",
+              alignSelf:"flex-start",
             }}>
               <div style={{ padding:"14px 16px 10px", borderBottom:`2px solid #eee`, flexShrink:0 }}>
                 <div style={{ fontWeight:900, fontSize:"15px", color:C.black,
@@ -2082,7 +2155,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
               {/* Header row */}
               <div style={{ display:"flex", alignItems:"center", gap:"12px",
-                marginBottom:"12px", flexShrink:0, flexWrap:"wrap" }}>
+                marginBottom:"8px", flexShrink:0, flexWrap:"wrap" }}>
                 <h2 style={{ fontWeight:900, fontSize:"20px", color:C.black, margin:0, flex:1 }}>
                   <img src={ASSETS.tab_itinerary} style={{width:22,height:22,objectFit:"contain",
                     verticalAlign:"middle",marginRight:"6px"}}/>Your {days}-Day Plan
@@ -2094,14 +2167,51 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   cursor:"pointer", boxShadow:`2px 2px 0 ${C.black}`,
                   fontFamily:"'Nunito',sans-serif" }}>＋ Title Card</button>
                 <button onClick={()=>{
-                    window.__wanderboard_print_data = { itinerary: itinerary?.slice(1), dayTitles };
                     const el = document.getElementById("wb-print-itinerary");
-                    if(el){ el.style.display="block"; window.print(); setTimeout(()=>{ el.style.display="none"; },1200); }
+                    if(el){ el.style.display="block"; setTimeout(()=>{ window.print(); setTimeout(()=>{ el.style.display="none"; },500); },100); }
                   }} style={{ background:C.white, border:`2px solid ${C.black}`, borderRadius:"999px",
                   padding:"6px 14px", fontSize:"12px", fontWeight:900, cursor:"pointer",
                   boxShadow:`2px 2px 0 ${C.black}`, fontFamily:"'Nunito',sans-serif" }}>
                   📄 Export PDF
                 </button>
+              </div>
+
+              {/* Member avatar filter bar */}
+              <div style={{ display:"flex", alignItems:"center", gap:"8px",
+                marginBottom:"12px", flexShrink:0, flexWrap:"wrap" }}>
+                <span style={{ fontSize:"11px", fontWeight:900, color:"#999",
+                  fontFamily:"'Nunito',sans-serif", whiteSpace:"nowrap" }}>Filter by:</span>
+                {trip.members.map(m=>{
+                  const isActive = filterMember?.id===m.id;
+                  return (
+                    <div key={m.id} onClick={()=>setFilterMember(isActive?null:m)}
+                      title={m.name}
+                      style={{ cursor:"pointer", position:"relative",
+                        transform: isActive?"scale(1.15)":"scale(1)",
+                        transition:"transform .15s" }}>
+                      <div style={{ width:34, height:34, borderRadius:"50%",
+                        overflow:"hidden", border:`3px solid ${isActive?C.orange:C.black}`,
+                        background:m.avatar?m.avatar.color:C.yellow,
+                        boxShadow: isActive?`0 0 0 2px ${C.orange}`:"none" }}>
+                        {m.avatar
+                          ? <Blob size={34} mood={m.avatar.mood} color={m.avatar.color} avatarId={m.avatar.id||m.id}/>
+                          : <div style={{ display:"flex",alignItems:"center",justifyContent:"center",height:"100%",fontSize:"16px" }}>👤</div>
+                        }
+                      </div>
+                      {isActive && <div style={{ position:"absolute",bottom:-2,right:-2,
+                        background:C.orange,borderRadius:"50%",width:12,height:12,
+                        border:`2px solid ${C.white}`,
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        color:C.white,fontWeight:900,fontSize:"7px" }}>✓</div>}
+                    </div>
+                  );
+                })}
+                {filterMember && (
+                  <button onClick={()=>setFilterMember(null)}
+                    style={{ background:C.cream, border:`2px solid ${C.black}`, borderRadius:"999px",
+                      padding:"3px 10px", fontSize:"11px", fontWeight:900, cursor:"pointer",
+                      fontFamily:"'Nunito',sans-serif" }}>✕ Clear</button>
+                )}
               </div>
 
               {/* Day columns scroll area */}
@@ -2111,7 +2221,14 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                 flex:1, scrollbarWidth:"thin",
                 paddingRight:"20px",
               }}>
-                {(itinerary ? itinerary.slice(1) : Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>(
+                {(itinerary ? itinerary.slice(1) : Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>{
+                  // Apply member filter
+                  const visiblePlaces = filterMember
+                    ? dayObj.places.filter(p => p._isTitleCard || (p.votes||[]).includes(filterMember.name))
+                    : dayObj.places;
+                  // Hide empty day columns when filtering
+                  if(filterMember && visiblePlaces.filter(p=>!p._isTitleCard).length===0) return null;
+                  return (
                   <div key={dayObj.day}
                     onDragOver={e=>{e.preventDefault();e.currentTarget.style.outline=`3px dashed ${C.orange}`}}
                     onDragLeave={e=>{e.currentTarget.style.outline="none"}}
@@ -2119,7 +2236,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                     style={{
                       background:C.white, border:`3px solid ${C.black}`,
                       borderRadius:"20px", padding:"14px",
-                      minWidth:"240px", width:"240px", flexShrink:0,
+                      minWidth:"340px", width:"340px", flexShrink:0,
                       boxShadow:`5px 5px 0 ${C.black}`,
                       display:"flex", flexDirection:"column",
                     }}>
@@ -2169,14 +2286,14 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       )}
                     </div>
 
-                    {dayObj.places.length===0&&(
+                    {visiblePlaces.length===0&&(
                       <p style={{ color:"#ccc", fontSize:"12px", textAlign:"center",
                         padding:"20px 0", fontWeight:800, fontStyle:"italic", flexShrink:0 }}>
-                        Drop here ↓
+                        {filterMember ? `No places for ${filterMember.name} here` : "Drop here ↓"}
                       </p>
                     )}
 
-                    {dayObj.places.map((loc,locIdx)=>(
+                    {visiblePlaces.map((loc,locIdx)=>(
                       <div key={loc.id}
                         onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                         onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
@@ -2189,12 +2306,13 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                             deleteLocation(id);
                           }}
                           onMoveUp={locIdx>0?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx-1):null}
-                          onMoveDown={locIdx<dayObj.places.length-1?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx+1):null}
+                          onMoveDown={locIdx<visiblePlaces.length-1?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx+1):null}
                           onDragStart={e=>handleDragStart(e,dayIdx,locIdx)}/>
                       </div>
                     ))}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -2204,6 +2322,79 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
       {showAddLoc&&<LocationModal onSave={handleAddLocation} onClose={()=>setShowAddLoc(false)}/>}
       {editLoc&&<LocationModal existing={editLoc} onSave={handleSaveEdit} onClose={()=>setEditLoc(null)}/>}
       {showManageMembers&&<ManageMembersModal trip={trip} onUpdate={handleUpdateMembers} onClose={()=>setShowManageMembers(false)}/>}
+
+      {/* ── Hidden print div — lives here to access itinerary state ── */}
+      <div id="wb-print-itinerary" style={{display:"none"}}>
+        <PrintItinerary trip={trip} itinerary={itinerary ? itinerary.slice(1) : []} dayTitles={dayTitles}/>
+      </div>
+
+      {/* ── Add Link Modal ── */}
+      {showAddLink&&(
+        <div onClick={()=>setShowAddLink(false)}
+          style={{ position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:1000,
+            display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{ background:C.white,border:`4px solid ${C.black}`,borderRadius:"24px",
+              boxShadow:`8px 8px 0 ${C.black}`,width:"100%",maxWidth:"400px",padding:"28px 24px",
+              fontFamily:"'Nunito',sans-serif" }}>
+            <h3 style={{ fontWeight:900,fontSize:"20px",color:C.black,margin:"0 0 20px" }}>
+              🔗 Add Link
+            </h3>
+            {[
+              {label:"Link Name",key:"name",placeholder:"e.g. Japan Entry Form, Klook App"},
+              {label:"URL",key:"url",placeholder:"https://..."},
+              {label:"Description",key:"description",placeholder:"Short note about this link"},
+            ].map(({label,key,placeholder})=>(
+              <div key={key} style={{ marginBottom:"14px" }}>
+                <label style={{ fontWeight:900,fontSize:"13px",color:C.black,display:"block",marginBottom:"5px" }}>
+                  {label}
+                </label>
+                <input
+                  autoFocus={key==="name"}
+                  value={linkDraft[key]}
+                  onChange={e=>setLinkDraft(d=>({...d,[key]:e.target.value}))}
+                  placeholder={placeholder}
+                  style={{ width:"100%",background:C.cream,border:`3px solid ${C.black}`,
+                    borderRadius:"12px",padding:"10px 14px",fontSize:"14px",fontWeight:700,
+                    fontFamily:"'Nunito',sans-serif",outline:"none",
+                    boxShadow:`3px 3px 0 ${C.black}`,boxSizing:"border-box" }}/>
+              </div>
+            ))}
+            <div style={{ display:"flex",gap:"10px",marginTop:"20px" }}>
+              <button onClick={()=>setShowAddLink(false)}
+                style={{ flex:1,background:C.cream,border:`3px solid ${C.black}`,borderRadius:"12px",
+                  padding:"10px",fontSize:"14px",fontWeight:900,cursor:"pointer",
+                  boxShadow:`3px 3px 0 ${C.black}`,fontFamily:"'Nunito',sans-serif" }}>
+                Cancel
+              </button>
+              <button
+                disabled={!linkDraft.name.trim()||!linkDraft.url.trim()}
+                onClick={async ()=>{
+                  if(!linkDraft.name.trim()||!linkDraft.url.trim()) return;
+                  const url = linkDraft.url.startsWith("http") ? linkDraft.url : "https://"+linkDraft.url;
+                  await handleUploadDoc({
+                    name: linkDraft.description.trim()
+                      ? `${linkDraft.name.trim()}||${linkDraft.description.trim()}`
+                      : linkDraft.name.trim(),
+                    type: "text/uri-list",
+                    data: url,
+                    category: "Links",
+                  });
+                  setShowAddLink(false);
+                }}
+                style={{ flex:2,
+                  background:(linkDraft.name.trim()&&linkDraft.url.trim())?C.cyan:"#ccc",
+                  border:`3px solid ${(linkDraft.name.trim()&&linkDraft.url.trim())?C.black:"#ccc"}`,
+                  borderRadius:"12px",padding:"10px",fontSize:"14px",fontWeight:900,
+                  cursor:(linkDraft.name.trim()&&linkDraft.url.trim())?"pointer":"not-allowed",
+                  color:C.black,boxShadow:(linkDraft.name.trim()&&linkDraft.url.trim())?`3px 3px 0 ${C.black}`:"none",
+                  fontFamily:"'Nunito',sans-serif",transition:"all .15s" }}>
+                ＋ Add Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Title Card Modal ── */}
       {showTitleCardModal&&(
@@ -2371,13 +2562,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 /* ══════════════════════════════════════════════════════════
    PRINT ITINERARY COMPONENT
 ══════════════════════════════════════════════════════════ */
-function PrintItinerary({ trip }) {
-  if (!trip) return null;
-  const printData = window.__wanderboard_print_data || {};
-  const itinerary = printData.itinerary;
-  const dayTitles = printData.dayTitles || {};
-  if (!itinerary) return null;
-
+function PrintItinerary({ trip, itinerary, dayTitles }) {
+  if (!trip || !itinerary || !itinerary.length) return null;
   const mapsBase = "https://www.google.com/maps/search/?api=1&query=";
 
   return (
@@ -2489,10 +2675,27 @@ export default function App() {
   const [showNewTrip,setShowNewTrip]   = useState(false);
   const [skipPassword,setSkipPassword] = useState(false);
 
-  // ── Load trips list on mount ─────────────────────────────
+  // ── Load trips list on mount + auto-restore last session ──
   useEffect(()=>{
     fetchAllTrips()
-      .then(setTrips)
+      .then(trips => {
+        setTrips(trips);
+        // Try to restore last session
+        const lastTripId = localStorage.getItem("wb_last_trip");
+        if(lastTripId) {
+          const trip = trips.find(t=>t.id===lastTripId);
+          if(trip) {
+            const session = loadSession(trip.id);
+            if(session && trip.members.find(m=>m.id===session.id)) {
+              fetchTrip(trip.id).then(full=>{
+                setSelectedTrip(full);
+                setCurrentMember(session);
+                setScreen("canvas");
+              }).catch(console.error);
+            }
+          }
+        }
+      })
       .catch(console.error)
       .finally(()=>setTripsLoading(false));
   },[]);
@@ -2527,6 +2730,7 @@ export default function App() {
         setSelectedTrip(full);
         setCurrentMember(session);
         setScreen("canvas");
+        localStorage.setItem("wb_last_trip", trip.id);
       } catch(e) { console.error(e); }
       return;
     }
@@ -2541,6 +2745,7 @@ export default function App() {
       setSelectedTrip(full);
       setCurrentMember(member);
       setScreen("canvas");
+      localStorage.setItem("wb_last_trip", full.id);
     } catch(e) { console.error(e); }
   }
 
@@ -2554,7 +2759,7 @@ export default function App() {
     setScreen("home");
     setCurrentMember(null);
     setSelectedTrip(null);
-    // Refresh list
+    localStorage.removeItem("wb_last_trip");
     fetchAllTrips().then(setTrips).catch(console.error);
   }
 
@@ -2600,11 +2805,6 @@ export default function App() {
           onUpdateTrip={handleUpdateTrip} onLeave={handleLeave}
           onSwitchUser={handleSwitchUser}/>
       )}
-
-      {/* ── Hidden print div for PDF export ── */}
-      <div id="wb-print-itinerary">
-        <PrintItinerary trip={liveTrip} />
-      </div>
     </>
   );
 }
