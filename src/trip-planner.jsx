@@ -6,6 +6,7 @@ import {
   fetchItinerary, saveItinerary,
   fetchDocuments, uploadDocument, deleteDocument,
   fetchChecklist, addCheckItem, toggleCheckItem, deleteCheckItem,
+  fetchTripInfo, saveTripInfo,
   saveSession, loadSession, clearSession,
   saveAvatarChoice, loadAvatarChoice,
 } from "./db";
@@ -1187,6 +1188,128 @@ function EditTripModal({ trip, onSave, onClose }) {
 }
 
 /* ══════════════════════════════════════════════════════════
+   TRIP INFO CARD
+══════════════════════════════════════════════════════════ */
+const TRIP_INFO_FIELDS = [
+  { key:"departureFlight",   label:"✈️ Departure Flight",  placeholder:"e.g. 5J 5054 · NAIA T3 → NARITA T2" },
+  { key:"departureDate",     label:"📅 Departure Date",     placeholder:"e.g. 03/16/2026" },
+  { key:"returnFlight",      label:"✈️ Return Flight",      placeholder:"e.g. 5J 5057 · NARITA T2 → NAIA T3" },
+  { key:"returnDate",        label:"📅 Return Date",        placeholder:"e.g. 03/23/2026" },
+  { key:"hotel",             label:"🏨 Hotel",              placeholder:"e.g. APA Hotel Shinjuku-Gyoemmae" },
+  { key:"hotelAddress",      label:"📍 Hotel Address",      placeholder:"e.g. 2 Chome-2-8 Shinjuku, Tokyo" },
+  { key:"hotelContact",      label:"📞 Hotel Contact",      placeholder:"e.g. +81570033622" },
+  { key:"emergencyContact",  label:"🚨 Emergency Contact",  placeholder:"e.g. Name · +63 912 345 6789" },
+  { key:"notes",             label:"📝 Notes",              placeholder:"Any other important info…", multiline:true },
+];
+
+function TripInfoCard({ tripInfo, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState({});
+
+  function startEdit() {
+    setDraft({...tripInfo});
+    setEditing(true);
+  }
+
+  function handleSave() {
+    onSave(draft);
+    setEditing(false);
+  }
+
+  const hasContent = TRIP_INFO_FIELDS.some(f => tripInfo[f.key]);
+
+  return (
+    <div style={{ marginBottom:"24px",marginTop:"8px" }}>
+      {/* Header row */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"12px" }}>
+        <h2 style={{ fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:"20px",
+          color:C.black,margin:0,display:"flex",alignItems:"center",gap:"8px" }}>
+          🗺️ Trip Info
+        </h2>
+        <button onClick={editing?handleSave:startEdit}
+          style={{ background:editing?C.lime:C.cyan,border:`3px solid ${C.black}`,
+            borderRadius:"999px",padding:"6px 16px",fontSize:"13px",fontWeight:900,
+            color:C.black,cursor:"pointer",boxShadow:`3px 3px 0 ${C.black}`,
+            fontFamily:"'Nunito',sans-serif" }}>
+          {editing ? "✓ Save" : "✏️ Edit"}
+        </button>
+      </div>
+
+      <div style={{ background:C.white,border:`3px solid ${C.black}`,borderRadius:"20px",
+        boxShadow:`5px 5px 0 ${C.black}`,padding:"20px 24px" }}>
+
+        {editing ? (
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px" }}>
+            {TRIP_INFO_FIELDS.map(f=>(
+              <div key={f.key} style={{ gridColumn: f.multiline?"1 / -1":"auto" }}>
+                <div style={{ fontWeight:900,fontSize:"12px",color:"#888",marginBottom:"4px",
+                  fontFamily:"'Nunito',sans-serif",textTransform:"uppercase",letterSpacing:"0.5px" }}>
+                  {f.label}
+                </div>
+                {f.multiline
+                  ? <textarea
+                      value={draft[f.key]||""}
+                      onChange={e=>setDraft(d=>({...d,[f.key]:e.target.value}))}
+                      placeholder={f.placeholder}
+                      rows={3}
+                      style={{ width:"100%",boxSizing:"border-box",
+                        background:C.cream,border:`2px solid ${C.black}`,borderRadius:"10px",
+                        padding:"8px 12px",fontSize:"13px",fontWeight:700,resize:"vertical",
+                        fontFamily:"'Nunito',sans-serif",outline:"none" }}/>
+                  : <input
+                      type="text"
+                      value={draft[f.key]||""}
+                      onChange={e=>setDraft(d=>({...d,[f.key]:e.target.value}))}
+                      placeholder={f.placeholder}
+                      style={{ width:"100%",boxSizing:"border-box",
+                        background:C.cream,border:`2px solid ${C.black}`,borderRadius:"10px",
+                        padding:"8px 12px",fontSize:"13px",fontWeight:700,
+                        fontFamily:"'Nunito',sans-serif",outline:"none" }}/>
+                }
+              </div>
+            ))}
+            <div style={{ gridColumn:"1 / -1",display:"flex",justifyContent:"flex-end",gap:"8px",marginTop:"4px" }}>
+              <button onClick={()=>setEditing(false)}
+                style={{ background:C.cream,border:`2px solid ${C.black}`,borderRadius:"999px",
+                  padding:"6px 16px",fontSize:"12px",fontWeight:900,cursor:"pointer",
+                  fontFamily:"'Nunito',sans-serif" }}>
+                Cancel
+              </button>
+              <button onClick={handleSave}
+                style={{ background:C.lime,border:`2px solid ${C.black}`,borderRadius:"999px",
+                  padding:"6px 16px",fontSize:"12px",fontWeight:900,cursor:"pointer",
+                  fontFamily:"'Nunito',sans-serif" }}>
+                ✓ Save Info
+              </button>
+            </div>
+          </div>
+        ) : hasContent ? (
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 24px" }}>
+            {TRIP_INFO_FIELDS.filter(f=>tripInfo[f.key]).map(f=>(
+              <div key={f.key} style={{ gridColumn:f.multiline?"1 / -1":"auto" }}>
+                <div style={{ fontWeight:900,fontSize:"11px",color:"#aaa",marginBottom:"2px",
+                  fontFamily:"'Nunito',sans-serif",textTransform:"uppercase",letterSpacing:"0.5px" }}>
+                  {f.label}
+                </div>
+                <div style={{ fontWeight:700,fontSize:"14px",color:C.black,
+                  fontFamily:"'Nunito',sans-serif",lineHeight:1.4 }}>
+                  {tripInfo[f.key]}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign:"center",padding:"20px 0",color:"#aaa",
+            fontFamily:"'Nunito',sans-serif",fontWeight:700,fontSize:"14px" }}>
+            No trip info yet. Click <b style={{color:C.black}}>✏️ Edit</b> to add flight details, hotel info, and more!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
    HOME SCREEN
 ══════════════════════════════════════════════════════════ */
 function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDuplicateTrip }) {
@@ -1562,6 +1685,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [editingDayTitle,setEditingDayTitle] = useState(null);
   const [placeSearch,setPlaceSearch] = useState("");
   const [docs,setDocs] = useState([]);
+  const [tripInfo,setTripInfo] = useState(null);
   const [previewDoc,setPreviewDoc] = useState(null);
   const [checklist,setChecklist] = useState([]);
   const [newCheckItem,setNewCheckItem] = useState("");
@@ -1605,6 +1729,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
     fetchDocuments(trip.id).then(setDocs).catch(console.error);
     fetchChecklist(trip.id).then(setChecklist).catch(console.error);
+    fetchTripInfo(trip.id).then(info=>setTripInfo(info||{})).catch(console.error);
   },[trip.id]);
 
   // ── Persist itinerary whenever it changes ─────────────────
@@ -2019,6 +2144,12 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
         {tab==="docs"&&<>
           <div style={{ padding:"0 16px 32px" }}>
+
+            {/* ── TRIP INFO CARD ── */}
+            {tripInfo!==null&&<TripInfoCard tripInfo={tripInfo} onSave={async(fields)=>{
+              setTripInfo(fields);
+              await saveTripInfo(trip.id, fields).catch(console.error);
+            }}/>}
 
             {/* ── DOCS SECTION ── */}
             <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",
