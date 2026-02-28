@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  fetchAllTrips, fetchTrip, createTrip, deleteTrip,
+  fetchAllTrips, fetchTrip, createTrip, updateTrip, deleteTrip,
   addMember, removeMember, saveMemberAvatar,
   addLocation, updateLocation, deleteLocation, toggleVote,
   fetchItinerary, saveItinerary,
@@ -1040,7 +1040,7 @@ function NewTripModal({ onSave, onClose }) {
 /* ══════════════════════════════════════════════════════════
    TRIP CARD — home screen card with kebab delete menu
 ══════════════════════════════════════════════════════════ */
-function TripCard({ trip, bg, onOpen, onDelete }) {
+function TripCard({ trip, bg, onOpen, onDelete, onEdit, onDuplicate }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div style={{ position:"relative" }}>
@@ -1074,6 +1074,19 @@ function TripCard({ trip, bg, onOpen, onDelete }) {
             {formatDate(trip.startDate)} → {formatDate(trip.endDate)}
           </p>
         )}
+        {trip.startDate&&(()=>{
+          const msLeft = new Date(trip.startDate).setHours(0,0,0,0) - new Date().setHours(0,0,0,0);
+          const daysLeft = Math.round(msLeft/(1000*60*60*24));
+          if(daysLeft<0) return null;
+          return (
+            <div style={{ display:"inline-flex",alignItems:"center",gap:"5px",marginTop:"10px",
+              background:daysLeft<=7?C.orange:C.yellow, border:`2px solid ${C.black}`,
+              borderRadius:"999px", padding:"3px 12px",
+              boxShadow:`2px 2px 0 ${C.black}`,fontSize:"12px",fontWeight:900,color:C.black }}>
+              {daysLeft===0?"✈️ Today!":daysLeft===1?"⏳ Tomorrow!":`⏳ ${daysLeft} days to go!`}
+            </div>
+          );
+        })()}
       </div>
       {/* Kebab menu */}
       <div style={{ position:"absolute",top:"12px",right:"12px" }} onClick={e=>e.stopPropagation()}>
@@ -1086,16 +1099,22 @@ function TripCard({ trip, bg, onOpen, onDelete }) {
         {menuOpen&&(
           <div style={{ position:"absolute",right:0,top:"calc(100% + 4px)",
             background:C.white,border:`3px solid ${C.black}`,borderRadius:"12px",
-            boxShadow:`4px 4px 0 ${C.black}`,zIndex:50,overflow:"hidden",minWidth:"140px" }}>
-            <button onClick={()=>{setMenuOpen(false);onOpen();}} style={{
-              display:"flex",alignItems:"center",gap:"8px",width:"100%",
-              padding:"10px 14px",background:"none",border:"none",cursor:"pointer",
-              fontSize:"13px",fontWeight:900,fontFamily:"'Nunito',sans-serif",
-              color:C.black,borderBottom:`2px solid #F0EAE0`
-            }}
-            onMouseEnter={e=>e.currentTarget.style.background=C.cyan+"44"}
-            onMouseLeave={e=>e.currentTarget.style.background="none"}
-            >✈️ Open Trip</button>
+            boxShadow:`4px 4px 0 ${C.black}`,zIndex:50,overflow:"hidden",minWidth:"160px" }}>
+            {[
+              {icon:"✈️", label:"Open Trip",   action:()=>{setMenuOpen(false);onOpen();},       color:C.cyan},
+              {icon:"✏️", label:"Edit Details", action:()=>{setMenuOpen(false);onEdit();},       color:C.yellow},
+              {icon:"📋", label:"Duplicate",    action:()=>{setMenuOpen(false);onDuplicate();},  color:C.lime},
+            ].map((item,i,arr)=>(
+              <button key={item.label} onClick={item.action} style={{
+                display:"flex",alignItems:"center",gap:"8px",width:"100%",
+                padding:"10px 14px",background:"none",border:"none",cursor:"pointer",
+                fontSize:"13px",fontWeight:900,fontFamily:"'Nunito',sans-serif",
+                color:C.black, borderBottom:i<arr.length?`2px solid #F0EAE0`:"none"
+              }}
+              onMouseEnter={e=>e.currentTarget.style.background=item.color+"44"}
+              onMouseLeave={e=>e.currentTarget.style.background="none"}
+              >{item.icon} {item.label}</button>
+            ))}
             <button onClick={()=>{
               setMenuOpen(false);
               if(window.confirm(`Delete "${trip.name}"? This cannot be undone.`)) onDelete();
@@ -1113,11 +1132,60 @@ function TripCard({ trip, bg, onOpen, onDelete }) {
     </div>
   );
 }
+/* ══════════════════════════════════════════════════════════
+   EDIT TRIP MODAL
+══════════════════════════════════════════════════════════ */
+function EditTripModal({ trip, onSave, onClose }) {
+  const [form,setForm] = useState({
+    name: trip.name||"",
+    location: trip.location||"",
+    startDate: trip.startDate||"",
+    endDate: trip.endDate||"",
+    numDays: trip.numDays||"",
+    password: trip.password||"",
+  });
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  return (
+    <Modal onClose={onClose} color={C.cream}>
+      <div style={{ textAlign:"center",marginBottom:"20px" }}>
+        <Blob size={64} mood="happy" color={C.yellow} style={{ margin:"0 auto 10px" }}/>
+        <h2 style={{ fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:"22px",color:C.black }}>
+          Edit Trip ✏️
+        </h2>
+      </div>
+      <div style={{ display:"flex",flexDirection:"column",gap:"14px" }}>
+        <Input label="Trip Name *" value={form.name} onChange={e=>set("name",e.target.value)} placeholder="e.g. Japan Spring 2025"/>
+        <Input label="Destination *" value={form.location} onChange={e=>set("location",e.target.value)} placeholder="e.g. Tokyo, Japan"/>
+        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px" }}>
+          <Input label="Start Date" type="date" value={form.startDate} onChange={e=>set("startDate",e.target.value)}/>
+          <Input label="End Date" type="date" value={form.endDate} onChange={e=>set("endDate",e.target.value)}/>
+        </div>
+        <Input label="Or # Days (if no dates)" type="number" min="1" value={form.numDays} onChange={e=>set("numDays",e.target.value)} placeholder="e.g. 5"/>
+        <PasswordInput label="Trip Password" value={form.password} onChange={e=>set("password",e.target.value)} placeholder="Leave blank to keep current"/>
+        <div style={{ display:"flex",gap:"10px",justifyContent:"flex-end",marginTop:"8px" }}>
+          <PillBtn color={C.cream} onClick={onClose} small>Cancel</PillBtn>
+          <PillBtn color={C.orange} textColor={C.white} onClick={()=>{
+            if(!form.name.trim()||!form.location.trim()) return;
+            onSave({
+              ...trip,
+              name: form.name.trim(),
+              location: form.location.trim(),
+              startDate: form.startDate,
+              endDate: form.endDate,
+              numDays: parseInt(form.numDays)||trip.numDays||1,
+              password: form.password.trim()||trip.password,
+            });
+          }}>Save Changes ✓</PillBtn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 /* ══════════════════════════════════════════════════════════
    HOME SCREEN
 ══════════════════════════════════════════════════════════ */
-function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip }) {
+function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip, onEditTrip, onDuplicateTrip }) {
   return (
     <div style={{ minHeight:"100vh",background:C.pink,fontFamily:"'Nunito',sans-serif",paddingBottom:"60px" }}>
       {/* Hero */}
@@ -1165,7 +1233,8 @@ function HomeScreen({ trips, onOpen, onNewTrip, onDeleteTrip }) {
               const bg=bgCols[i%bgCols.length];
               return (
                 <TripCard key={trip.id} trip={trip} bg={bg}
-                  onOpen={()=>onOpen(trip)} onDelete={()=>onDeleteTrip(trip.id)}/>
+                  onOpen={()=>onOpen(trip)} onDelete={()=>onDeleteTrip(trip.id)}
+                  onEdit={()=>onEditTrip(trip)} onDuplicate={()=>onDuplicateTrip(trip)}/>
               );
             })}
 
@@ -1332,8 +1401,9 @@ function TripLogin({ trip, onLogin, onBack, skipPassword=false }) {
 /* ══════════════════════════════════════════════════════════
    MANAGE MEMBERS MODAL
 ══════════════════════════════════════════════════════════ */
-function ManageMembersModal({ trip, onUpdate, onClose }) {
+function ManageMembersModal({ trip, currentMember, onUpdate, onClose }) {
   const [newName, setNewName] = useState("");
+  const isCreator = trip.members[0]?.id === currentMember?.id;
 
   function addMember() {
     const n = newName.trim();
@@ -1341,9 +1411,18 @@ function ManageMembersModal({ trip, onUpdate, onClose }) {
     onUpdate({...trip, members:[...trip.members, {id:uid(), name:n}]});
     setNewName("");
   }
-  function removeMember(id) {
+  function removeMember(memberToRemove) {
     if(trip.members.length<=1) return;
-    onUpdate({...trip, members:trip.members.filter(m=>m.id!==id)});
+    // Clear this member's votes from all locations
+    const updatedLocations = (trip.locations||[]).map(loc=>({
+      ...loc,
+      votes: (loc.votes||[]).filter(v=>v!==memberToRemove.name)
+    }));
+    onUpdate({
+      ...trip,
+      members: trip.members.filter(m=>m.id!==memberToRemove.id),
+      locations: updatedLocations,
+    });
   }
 
   return (
@@ -1353,11 +1432,17 @@ function ManageMembersModal({ trip, onUpdate, onClose }) {
         <h2 style={{ fontFamily:"'Nunito',sans-serif",fontWeight:900,fontSize:"22px",color:C.black }}>
           Manage Members 👥
         </h2>
+        {!isCreator&&(
+          <p style={{ fontSize:"12px",color:"#999",fontWeight:700,margin:"6px 0 0",fontFamily:"'Nunito',sans-serif" }}>
+            Only the trip creator can remove members.
+          </p>
+        )}
       </div>
       {/* Current members */}
       <div style={{ display:"flex",flexDirection:"column",gap:"8px",marginBottom:"20px" }}>
-        {trip.members.map(m=>{
+        {trip.members.map((m,i)=>{
           const av = loadAvatarChoice(trip.id, m.id);
+          const isFirst = i===0;
           return (
             <div key={m.id} style={{ display:"flex",alignItems:"center",gap:"10px",
               background:C.white,border:`2px solid ${C.black}`,borderRadius:"12px",
@@ -1367,8 +1452,12 @@ function ManageMembersModal({ trip, onUpdate, onClose }) {
                       border:`2px solid ${C.black}`,display:"flex",alignItems:"center",
                       justifyContent:"center",fontSize:"14px" }}>?</div>}
               <span style={{ flex:1,fontWeight:900,fontSize:"15px",fontFamily:"'Nunito',sans-serif" }}>{m.name}</span>
-              {trip.members.length>1&&(
-                <button onClick={()=>removeMember(m.id)} style={{ background:C.pink,border:`2px solid ${C.black}`,
+              {isFirst&&(
+                <span style={{ fontSize:"10px",fontWeight:900,color:C.orange,
+                  border:`1px solid ${C.orange}`,borderRadius:"999px",padding:"1px 7px" }}>creator</span>
+              )}
+              {isCreator && !isFirst && (
+                <button onClick={()=>removeMember(m)} style={{ background:C.pink,border:`2px solid ${C.black}`,
                   borderRadius:"8px",cursor:"pointer",padding:"3px 8px",fontSize:"13px",
                   boxShadow:`2px 2px 0 ${C.black}`,fontWeight:900 }}>×</button>
               )}
@@ -1403,7 +1492,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [sortByVotes,setSortByVotes] = useState(false);
   const [itinerary,setItinerary] = useState(null);
   const [dragInfo,setDragInfo] = useState(null);
+  const [colDragIdx,setColDragIdx] = useState(null); // for dragging entire day columns
   const [dayTitles,setDayTitles] = useState({});
+  const [dayNotes,setDayNotes] = useState({});
   const [editingDayTitle,setEditingDayTitle] = useState(null);
   const [placeSearch,setPlaceSearch] = useState("");
   const [docs,setDocs] = useState([]);
@@ -1430,18 +1521,16 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   useEffect(()=>{
     fetchItinerary(trip.id).then(s=>{
       if(s && s.itinerary) {
-        // Ensure first bucket (index 0) is the "unassigned" pool
         let it = s.itinerary;
         if(!it[0] || it[0].day !== 0) {
-          // Migrate old format: add unassigned bucket at front
           const assignedIds = new Set(it.flatMap(d=>d.places.map(p=>p.id)));
           const unassigned = (trip.locations||[]).filter(l=>!assignedIds.has(l.id));
           it = [{day:0, places:unassigned}, ...it];
         }
         setItinerary(it);
         setDayTitles(s.dayTitles||{});
+        setDayNotes(s.dayNotes||{});
       } else {
-        // First time: all places go to unassigned, create day buckets
         const buckets = [{day:0, places:[...(trip.locations||[])]}];
         for(let i=1;i<=days;i++) buckets.push({day:i,places:[]});
         setItinerary(buckets);
@@ -1455,9 +1544,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   // ── Persist itinerary whenever it changes ─────────────────
   useEffect(()=>{
     if(itinerary!==null) {
-      saveItinerary(trip.id, itinerary, dayTitles).catch(console.error);
+      saveItinerary(trip.id, itinerary, dayTitles, dayNotes).catch(console.error);
     }
-  },[itinerary, dayTitles]);
+  },[itinerary, dayTitles, dayNotes]);
 
   const days = tripDays(trip);
   const locations = trip.locations||[];
@@ -1549,6 +1638,18 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
     }
     setItinerary(newIt);
     setDragInfo(null);
+  }
+  function handleColumnReorder(fromIdx, toIdx) {
+    if(fromIdx===toIdx) return;
+    // itinerary[0] is unassigned pool, day columns start at index 1
+    const newIt = [...itinerary];
+    const fromBucket = fromIdx + 1;
+    const toBucket   = toIdx   + 1;
+    const [moved] = newIt.splice(fromBucket, 1);
+    newIt.splice(toBucket, 0, moved);
+    // Renumber day field to match new positions
+    const renumbered = newIt.map((d,i) => i===0 ? d : {...d, day:i});
+    setItinerary(renumbered);
   }
   function handleMoveCard(fromDay,fromIdx,toDay,toIdx) {
     const fromBucket = bucketIdx(fromDay);
@@ -2367,18 +2468,61 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
                 return (
                   <div key={dayObj.day}
-                    onDragOver={e=>e.preventDefault()}
-                    onDrop={e=>handleDrop(e,dayIdx)}
+                    onDragOver={e=>{
+                      e.preventDefault();
+                      // If dragging a column, show drop indicator
+                      if(colDragIdx!==null && colDragIdx!==dayIdx) {
+                        e.currentTarget.style.outline=`3px dashed ${C.orange}`;
+                        e.currentTarget.style.outlineOffset="3px";
+                      }
+                    }}
+                    onDragLeave={e=>{
+                      e.currentTarget.style.outline="none";
+                    }}
+                    onDrop={e=>{
+                      e.currentTarget.style.outline="none";
+                      if(colDragIdx!==null) {
+                        // Column drop — reorder columns
+                        handleColumnReorder(colDragIdx, dayIdx);
+                        setColDragIdx(null);
+                      } else {
+                        // Card drop
+                        handleDrop(e,dayIdx);
+                      }
+                    }}
                     style={{
-                      background:C.white, border:`3px solid ${C.black}`,
+                      background: colDragIdx===dayIdx ? "#f9f9f9" : C.white,
+                      border:`3px solid ${C.black}`,
                       borderRadius:"20px", padding:"14px",
                       minWidth:"340px", width:"340px", flexShrink:0,
                       boxShadow:`5px 5px 0 ${C.black}`,
                       display:"flex", flexDirection:"column",
+                      opacity: colDragIdx===dayIdx ? 0.5 : 1,
+                      transition:"opacity .15s",
                     }}>
                     {/* Day header */}
                     <div style={{ marginBottom:"10px", flexShrink:0 }}>
                       <div style={{ display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px" }}>
+                        {/* Column drag handle */}
+                        <div
+                          draggable
+                          onDragStart={e=>{
+                            e.stopPropagation();
+                            setColDragIdx(dayIdx);
+                            setDragInfo(null);
+                            e.dataTransfer.effectAllowed="move";
+                          }}
+                          onDragEnd={()=>setColDragIdx(null)}
+                          title="Drag to reorder day"
+                          style={{
+                            cursor:"grab", fontSize:"13px", color:"#ccc",
+                            padding:"2px 4px", borderRadius:"6px",
+                            userSelect:"none", flexShrink:0,
+                            lineHeight:1,
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.color="#999"}
+                          onMouseLeave={e=>e.currentTarget.style.color="#ccc"}
+                        >⠿</div>
                         <span style={{ background:dc,border:`2px solid ${C.black}`,borderRadius:"8px",
                           padding:"2px 10px",fontSize:"12px",fontWeight:900,
                           boxShadow:`2px 2px 0 ${C.black}` }}>Day {dayObj.day}</span>
@@ -2386,6 +2530,20 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                         <span style={{ fontSize:"11px",color:"#aaa",fontWeight:700,marginLeft:"auto" }}>
                           {dayObj.places.length} item{dayObj.places.length!==1?"s":""}
                         </span>
+                        {/* Open in Maps button */}
+                        {dayObj.places.filter(p=>!p._isTitleCard).length>0&&(
+                          <a
+                            href={`https://www.google.com/maps/dir/${dayObj.places.filter(p=>!p._isTitleCard).map(p=>encodeURIComponent((p.name||"")+(p.area?", "+p.area:""))).join("/")}`}
+                            target="_blank" rel="noreferrer"
+                            onClick={e=>e.stopPropagation()}
+                            style={{ fontSize:"11px",fontWeight:900,color:C.black,
+                              background:C.cyan,border:`2px solid ${C.black}`,
+                              borderRadius:"999px",padding:"2px 8px",
+                              boxShadow:`1px 1px 0 ${C.black}`,
+                              textDecoration:"none",whiteSpace:"nowrap",flexShrink:0 }}>
+                            🗺️
+                          </a>
+                        )}
                       </div>
                       {editingDayTitle===dayIdx?(
                         <input autoFocus
@@ -2406,6 +2564,24 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                           {dayTitles[dayIdx]||"＋ day title"}
                         </div>
                       )}
+                      {/* Day notes */}
+                      <textarea
+                        value={dayNotes[dayIdx]||""}
+                        onChange={e=>setDayNotes(n=>({...n,[dayIdx]:e.target.value}))}
+                        placeholder="Add a note for this day…"
+                        rows={1}
+                        style={{
+                          width:"100%", marginTop:"6px",
+                          fontSize:"11px", fontWeight:600, color:"#555",
+                          background:"transparent", border:"none",
+                          borderBottom: dayNotes[dayIdx] ? `1px solid #ddd` : "1px dashed #e0e0e0",
+                          outline:"none", resize:"none", fontFamily:"'Nunito',sans-serif",
+                          lineHeight:1.5, padding:"2px 4px",
+                          boxSizing:"border-box",
+                        }}
+                        onFocus={e=>{e.target.style.borderBottom=`1px solid ${C.orange}`;e.target.rows=3;}}
+                        onBlur={e=>{e.target.style.borderBottom=dayNotes[dayIdx]?"1px solid #ddd":"1px dashed #e0e0e0";e.target.rows=1;}}
+                      />
                     </div>
 
                     {visiblePlaces.length===0&&(
@@ -2442,7 +2618,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
 
       {showAddLoc&&<LocationModal onSave={handleAddLocation} onClose={()=>setShowAddLoc(false)}/>}
       {editLoc&&<LocationModal existing={editLoc} onSave={handleSaveEdit} onClose={()=>setEditLoc(null)}/>}
-      {showManageMembers&&<ManageMembersModal trip={trip} onUpdate={handleUpdateMembers} onClose={()=>setShowManageMembers(false)}/>}
+      {showManageMembers&&<ManageMembersModal trip={trip} currentMember={currentMember} onUpdate={handleUpdateMembers} onClose={()=>setShowManageMembers(false)}/>}
 
       {/* ── Hidden print div — lives here to access itinerary state ── */}
       <div id="wb-print-itinerary" style={{display:"none"}}>
@@ -2794,6 +2970,7 @@ export default function App() {
   const [selectedTrip,setSelectedTrip] = useState(null);
   const [currentMember,setCurrentMember] = useState(null);
   const [showNewTrip,setShowNewTrip]   = useState(false);
+  const [editingTrip,setEditingTrip]   = useState(null);
   const [skipPassword,setSkipPassword] = useState(false);
 
   // ── Load trips list on mount + auto-restore last session ──
@@ -2837,6 +3014,41 @@ export default function App() {
       setTrips(ts=>ts.filter(t=>t.id!==tripId));
       clearSession(tripId);
     } catch(e) { console.error(e); alert("Could not delete trip."); }
+  }
+
+  // ── Edit trip details ─────────────────────────────────────
+  async function handleEditTrip(updatedTrip) {
+    try {
+      await updateTrip(updatedTrip.id, {
+        name: updatedTrip.name,
+        location: updatedTrip.location,
+        startDate: updatedTrip.startDate,
+        endDate: updatedTrip.endDate,
+        numDays: updatedTrip.numDays,
+        password: updatedTrip.password,
+      });
+      setTrips(ts=>ts.map(t=>t.id===updatedTrip.id?updatedTrip:t));
+      setEditingTrip(null);
+    } catch(e) { console.error(e); alert("Could not update trip."); }
+  }
+
+  // ── Duplicate trip ────────────────────────────────────────
+  async function handleDuplicateTrip(trip) {
+    try {
+      const created = await createTrip({
+        id: uid(),
+        name: `${trip.name} (Copy)`,
+        location: trip.location,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        numDays: trip.numDays,
+        password: trip.password,
+        members: trip.members.map(m=>({id:uid(),name:m.name})),
+        locations: (trip.locations||[]).map(l=>({...l,id:uid(),votes:[]})),
+        createdAt: Date.now(),
+      });
+      setTrips(ts=>[created,...ts]);
+    } catch(e) { console.error(e); alert("Could not duplicate trip."); }
   }
 
   // ── Open trip (check local session first) ────────────────
@@ -2923,8 +3135,9 @@ export default function App() {
       `}</style>
 
       {screen==="home"&&<>
-        <HomeScreen trips={trips} loading={tripsLoading} onOpen={handleOpenTrip} onNewTrip={()=>setShowNewTrip(true)} onDeleteTrip={handleDeleteTrip}/>
+        <HomeScreen trips={trips} loading={tripsLoading} onOpen={handleOpenTrip} onNewTrip={()=>setShowNewTrip(true)} onDeleteTrip={handleDeleteTrip} onEditTrip={setEditingTrip} onDuplicateTrip={handleDuplicateTrip}/>
         {showNewTrip&&<NewTripModal onSave={handleNewTrip} onClose={()=>setShowNewTrip(false)}/>}
+        {editingTrip&&<EditTripModal trip={editingTrip} onSave={handleEditTrip} onClose={()=>setEditingTrip(null)}/>}
       </>}
 
       {screen==="login"&&liveTrip&&(
