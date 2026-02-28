@@ -2224,7 +2224,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               paddingLeft: panelOpen ? "302px" : "0px",
               transition:"padding-left .28s cubic-bezier(.4,0,.2,1)",
               minWidth:0,
-              overflowX:"auto",
+              overflow:"visible",
             }}>
 
             {/* Header */}
@@ -2346,8 +2346,10 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
             {/* Day columns */}
             <div style={{
               display:"flex", gap:"14px", overflowX:"auto", overflowY:"visible",
-              paddingBottom:"40px", alignItems:"flex-start",
-              scrollbarWidth:"thin", paddingRight:"20px",
+              paddingBottom:"40px", paddingTop:"6px",
+              paddingLeft:"8px", paddingRight:"24px",
+              alignItems:"flex-start",
+              scrollbarWidth:"thin",
             }}>
               {(itinerary?itinerary.slice(1):Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>{
                 const visiblePlaces = filterMember
