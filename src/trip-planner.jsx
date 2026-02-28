@@ -2611,9 +2611,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                             target="_blank" rel="noreferrer"
                             onClick={e=>e.stopPropagation()}
                             style={{ fontSize:"11px",fontWeight:900,color:C.black,
-                              background:C.cyan,border:`2px solid ${C.black}`,
+                              background:C.white,border:`2px solid ${C.black}`,
                               borderRadius:"999px",padding:"2px 8px",
-                              boxShadow:`1px 1px 0 ${C.black}`,
+                              boxShadow:`2px 2px 0 ${C.black}`,
                               textDecoration:"none",whiteSpace:"nowrap",flexShrink:0 }}>
                             🗺️
                           </a>
