@@ -2090,14 +2090,17 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
         {tab==="itinerary"&&<>
 
           {/* ── MOBILE BACKDROP when drawer open ── */}
-          <div
-            id="wb-drawer-backdrop"
-            onClick={()=>setPanelOpen(false)}
-            style={{
-              position:"fixed", inset:0, background:"rgba(0,0,0,.4)",
-              zIndex:199, display:"none", // shown via CSS on small screens
-            }}
-          />
+          {panelOpen && (
+            <div
+              id="wb-drawer-backdrop"
+              onClick={()=>setPanelOpen(false)}
+              style={{
+                position:"fixed", inset:0, background:"rgba(0,0,0,.4)",
+                zIndex:199,
+                display:"none", // shown via CSS on small screens only
+              }}
+            />
+          )}
 
           {/* ── COLLAPSIBLE DRAWER (fixed, left side) ── */}
           <div style={{
@@ -2213,14 +2216,15 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
             </div>
           </div>
 
-          {/* ── MAIN AREA — shifts right when drawer open (desktop), stays put on mobile ── */}
+          {/* ── MAIN AREA — shifts right when drawer open (desktop only) ── */}
           <div
             id="wb-itinerary-main"
             style={{
-              marginLeft:"36px", // always leave room for the toggle tab
-              transition:"padding-left .28s cubic-bezier(.4,0,.2,1)",
+              marginLeft:"36px",
               paddingLeft: panelOpen ? "302px" : "0px",
+              transition:"padding-left .28s cubic-bezier(.4,0,.2,1)",
               minWidth:0,
+              overflowX:"auto",
             }}>
 
             {/* Header */}
@@ -2904,7 +2908,6 @@ export default function App() {
         @media (max-width: 600px) {
           #wb-drawer-backdrop { display: block !important; }
           #wb-itinerary-main {
-            margin-left: 36px !important;
             padding-left: 0px !important;
             transition: none !important;
           }
