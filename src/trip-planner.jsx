@@ -1119,7 +1119,9 @@ function TripCard({ trip, bg, onOpen, onDelete, onEdit, onDuplicate }) {
             ))}
             <button onClick={()=>{
               setMenuOpen(false);
-              if(window.confirm(`Delete "${trip.name}"? This cannot be undone.`)) onDelete();
+              const pwd = window.prompt(`Enter creator password to delete "${trip.name}":`);
+              if(pwd === "myearoundtheworld0223") onDelete();
+              else if(pwd !== null) window.alert("Wrong password. Trip not deleted.");
             }} style={{
               display:"flex",alignItems:"center",gap:"8px",width:"100%",
               padding:"10px 14px",background:"none",border:"none",cursor:"pointer",
@@ -1610,7 +1612,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
     if(itinerary!==null && itineraryLoaded) {
       saveItinerary(trip.id, itinerary, dayTitles, dayNotes).catch(console.error);
     }
-  },[itinerary, dayTitles, dayNotes]);
+  },[itinerary, dayTitles, dayNotes, itineraryLoaded]);
 
   const days = tripDays(trip);
   const locations = trip.locations||[];
