@@ -1580,7 +1580,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   },[tab, trip.id]);
 
   // ── Load itinerary, docs, checklist on mount ─────────────
-  useEffect(()=>{\
+  useEffect(()=>{
     setItineraryLoaded(false);
     fetchItinerary(trip.id).then(s=>{
       if(s && s.itinerary) {
