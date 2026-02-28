@@ -111,6 +111,25 @@ export async function deleteTrip(tripId) {
   if (error) throw error;
 }
 
+/** Update trip details (name, location, dates, password). */
+export async function updateTrip(tripId, fields) {
+  const { data, error } = await supabase
+    .from("trips")
+    .update({
+      name:       fields.name,
+      location:   fields.location,
+      start_date: fields.startDate || null,
+      end_date:   fields.endDate   || null,
+      num_days:   fields.numDays   || 1,
+      password:   fields.password,
+    })
+    .eq("id", tripId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // ─── MEMBERS ─────────────────────────────────────────────────
 
 /** Add a member to an existing trip. */
@@ -220,15 +239,15 @@ export async function fetchItinerary(tripId) {
     .maybeSingle();
   if (error) throw error;
   if (!data)  return null;
-  return { itinerary: data.itinerary, dayTitles: data.day_titles };
+  return { itinerary: data.itinerary, dayTitles: data.day_titles, dayNotes: data.day_notes || {} };
 }
 
 /** Upsert (save or overwrite) the itinerary. */
-export async function saveItinerary(tripId, itinerary, dayTitles) {
+export async function saveItinerary(tripId, itinerary, dayTitles, dayNotes) {
   const { error } = await supabase
     .from("itineraries")
     .upsert(
-      { trip_id: tripId, itinerary, day_titles: dayTitles },
+      { trip_id: tripId, itinerary, day_titles: dayTitles, day_notes: dayNotes || {} },
       { onConflict: "trip_id" }
     );
   if (error) throw error;
