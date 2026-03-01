@@ -1518,7 +1518,7 @@ function TripLogin({ trip, onLogin, onBack, skipPassword=false }) {
           </p>
           <div style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
             {trip.members.map(m=>{
-              const saved = loadAvatarChoice(trip.id, m.id);
+              const saved = m.avatar || loadAvatarChoice(trip.id, m.id);
               return (
                 <button key={m.id} onClick={()=>chooseMember(m)}
                   style={{ background:C.yellow,border:`3px solid ${C.black}`,borderRadius:"14px",
@@ -1559,18 +1559,26 @@ function TripLogin({ trip, onLogin, onBack, skipPassword=false }) {
             We'll remember this for next time
           </p>
           <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"10px",marginBottom:"22px" }}>
-            {AVATAR_OPTIONS.map(av=>(
-              <button key={av.id} onClick={()=>setAvatar(av)} title={av.label}
-                style={{ background: avatar?.id===av.id ? av.color : C.white,
-                  border:`3px solid ${C.black}`,borderRadius:"16px",cursor:"pointer",
-                  padding:"10px 6px",
-                  boxShadow: avatar?.id===av.id?`4px 4px 0 ${C.black}`:`3px 3px 0 #aaa`,
-                  transition:"all .1s",display:"flex",flexDirection:"column",
-                  alignItems:"center",gap:"4px" }}>
-                <Blob size={52} mood={av.mood} color={av.color} avatarId={av.id}/>
-                <span style={{ fontSize:"10px",fontWeight:900,color:C.black }}>{av.label}</span>
-              </button>
-            ))}
+            {AVATAR_OPTIONS.map(av=>{
+              const takenBy = trip.members.find(m=>m.id!==member?.id && m.avatar?.id===av.id);
+              const isSelected = avatar?.id===av.id;
+              const isTaken = !!takenBy;
+              return (
+                <button key={av.id} onClick={()=>!isTaken&&setAvatar(av)} title={isTaken?`Taken by ${takenBy.name}`:av.label}
+                  style={{ background: isSelected ? av.color : isTaken ? "#f0f0f0" : C.white,
+                    border:`3px solid ${C.black}`,borderRadius:"16px",
+                    cursor:isTaken?"not-allowed":"pointer",
+                    padding:"10px 6px",opacity:isTaken?0.45:1,
+                    boxShadow: isSelected?`4px 4px 0 ${C.black}`:`3px 3px 0 #aaa`,
+                    transition:"all .1s",display:"flex",flexDirection:"column",
+                    alignItems:"center",gap:"4px",position:"relative" }}>
+                  <Blob size={52} mood={av.mood} color={av.color} avatarId={av.id}/>
+                  <span style={{ fontSize:"10px",fontWeight:900,color:C.black }}>{av.label}</span>
+                  {isTaken&&<span style={{ position:"absolute",top:4,right:6,fontSize:"9px",
+                    fontWeight:900,color:"#999" }}>taken</span>}
+                </button>
+              );
+            })}
           </div>
           <PillBtn
             color={avatar?C.orange:C.cream} textColor={avatar?C.white:C.black}
@@ -1599,7 +1607,6 @@ function ManageMembersModal({ trip, currentMember, onUpdate, onClose }) {
   }
   function removeMember(memberToRemove) {
     if(trip.members.length<=1) return;
-    // Clear this member's votes from all locations
     const updatedLocations = (trip.locations||[]).map(loc=>({
       ...loc,
       votes: (loc.votes||[]).filter(v=>v!==memberToRemove.name)
@@ -1609,6 +1616,11 @@ function ManageMembersModal({ trip, currentMember, onUpdate, onClose }) {
       members: trip.members.filter(m=>m.id!==memberToRemove.id),
       locations: updatedLocations,
     });
+  }
+  function makeCreator(m) {
+    if(!window.confirm(`Make "${m.name}" the new trip creator?`)) return;
+    const others = trip.members.filter(x=>x.id!==m.id);
+    onUpdate({...trip, members:[m, ...others]});
   }
 
   return (
@@ -1627,7 +1639,7 @@ function ManageMembersModal({ trip, currentMember, onUpdate, onClose }) {
       {/* Current members */}
       <div style={{ display:"flex",flexDirection:"column",gap:"8px",marginBottom:"20px" }}>
         {trip.members.map((m,i)=>{
-          const av = loadAvatarChoice(trip.id, m.id);
+          const av = m.avatar;
           const isFirst = i===0;
           return (
             <div key={m.id} style={{ display:"flex",alignItems:"center",gap:"10px",
@@ -1641,6 +1653,14 @@ function ManageMembersModal({ trip, currentMember, onUpdate, onClose }) {
               {isFirst&&(
                 <span style={{ fontSize:"10px",fontWeight:900,color:C.orange,
                   border:`1px solid ${C.orange}`,borderRadius:"999px",padding:"1px 7px" }}>creator</span>
+              )}
+              {isCreator && !isFirst && (
+                <button onClick={()=>makeCreator(m)} title="Make creator"
+                  style={{ background:C.yellow,border:`2px solid ${C.black}`,
+                    borderRadius:"8px",cursor:"pointer",padding:"3px 8px",fontSize:"11px",
+                    boxShadow:`2px 2px 0 ${C.black}`,fontWeight:900,fontFamily:"'Nunito',sans-serif" }}>
+                  👑
+                </button>
               )}
               {isCreator && !isFirst && (
                 <button onClick={()=>removeMember(m)} style={{ background:C.pink,border:`2px solid ${C.black}`,
