@@ -1718,7 +1718,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [filterMember,setFilterMember] = useState(null);
   const [showAddLink,setShowAddLink] = useState(false);
   const [linkDraft,setLinkDraft] = useState({name:"",url:"",description:""});
-  const [panelOpen,setPanelOpen] = useState(true);
+  const [panelOpen,setPanelOpen] = useState(false);
 
   // ── Persist last-viewed tab ───────────────────────────────
   useEffect(()=>{
