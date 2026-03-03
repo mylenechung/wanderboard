@@ -2493,6 +2493,14 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                           cursor:"pointer",fontWeight:900,fontSize:"11px",color:C.orange,
                           fontFamily:"'Nunito',sans-serif",padding:0 }}>✕ cancel</button>
                     </span>
+                  ) : tapSelected ? (
+                    <span>
+                      ✓ Selected! Tap any day column →
+                      <button onClick={e=>{e.stopPropagation();setTapSelected(null);}}
+                        style={{ marginLeft:"6px",background:"none",border:"none",
+                          cursor:"pointer",fontWeight:900,fontSize:"11px",color:C.orange,
+                          fontFamily:"'Nunito',sans-serif",padding:0 }}>✕ cancel</button>
+                    </span>
                   ) : "Drag to a day → or tap card to select"}
                 </p>
               </div>
@@ -2861,11 +2869,16 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       </p>
                     )}
 
-                    {visiblePlaces.map((loc,locIdx)=>(
+                    {visiblePlaces.map((loc,locIdx)=>{
+                      const isTapSel = tapSelected?.dayIdx===dayIdx && tapSelected?.locIdx===locIdx;
+                      return (
                       <div key={loc.id}
                         onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                         onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
-                        onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,dayIdx,locIdx);}}>
+                        onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,dayIdx,locIdx);}}
+                        onClick={e=>{e.stopPropagation();handleTapSelect(dayIdx,locIdx);}}
+                        style={{ outline:isTapSel?`3px solid ${C.orange}`:"none", borderRadius:"14px",
+                          background:isTapSel?C.orange+"22":"transparent", cursor:"pointer" }}>
                         <ItineraryCard loc={loc} currentMember={currentMember}
                           members={trip.members} onVote={handleToggleVote}
                           onEdit={setEditLoc}
@@ -2877,7 +2890,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                           onMoveDown={locIdx<visiblePlaces.length-1?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx+1):null}
                           onDragStart={e=>handleDragStart(e,dayIdx,locIdx)}/>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })}
