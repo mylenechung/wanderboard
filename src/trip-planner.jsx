@@ -66,6 +66,16 @@ const AVATAR_IMG = {
   minty:"avatar_minty", peachy:"avatar_peachy", stormy:"avatar_stormy",
   cloudy:"avatar_cloudy",
 };
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<=768);
+  useEffect(()=>{
+    const handler = ()=>setIsMobile(window.innerWidth<=768);
+    window.addEventListener("resize",handler);
+    return ()=>window.removeEventListener("resize",handler);
+  },[]);
+  return isMobile;
+}
+
 function Blob({ size=120, mood="happy", color=C.yellow, style:s={}, avatarId=null }) {
   // If we have a specific avatarId, use the custom image
   const imgKey = avatarId && AVATAR_IMG[avatarId];
@@ -596,6 +606,7 @@ function LocationCard({ loc, currentMember, onVote, onEdit, onDelete, members, d
 ══════════════════════════════════════════════════════════ */
 function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, onDragStart, onMoveUp, onMoveDown, onTapMove, isTapSelected }) {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // ── Title Card (label divider) ──
   if(loc._isTitleCard) {
@@ -693,7 +704,7 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
         {/* Move arrows + move button + chevron */}
         <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"3px",flexShrink:0 }}>
           <div style={{ display:"flex",alignItems:"center",gap:"4px" }}>
-            {onTapMove&&(
+            {isMobile && onTapMove&&(
               <button onClick={e=>{e.stopPropagation();onTapMove();}}
                 title="Move to another day"
                 style={{ background:isTapSelected?C.orange:C.yellow,
