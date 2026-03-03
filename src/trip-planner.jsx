@@ -1737,6 +1737,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [showTitleCardModal,setShowTitleCardModal] = useState(false);
   const [titleCardDraft,setTitleCardDraft] = useState({label:"",color:C.black});
   const [filterMember,setFilterMember] = useState(null);
+  const [searchQuery,setSearchQuery] = useState("");
   const [showAddLink,setShowAddLink] = useState(false);
   const [linkDraft,setLinkDraft] = useState({name:"",url:"",description:""});
   const [panelOpen,setPanelOpen] = useState(false);
@@ -2023,7 +2024,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
       <div style={{ background:C.white,borderBottom:`3px solid ${C.black}`,
         display:"flex",padding:"0 20px",position:"sticky",top:"57px",zIndex:99 }}>
         {[["places",ASSETS.tab_places,"Places"],["itinerary",ASSETS.tab_itinerary,"Itinerary"],["docs",ASSETS.tab_docs,"Docs & Checklist"]].map(([t,tabImg,label])=>(
-          <button key={t} onClick={()=>setTab(t)} style={{
+          <button key={t} onClick={()=>{setTab(t);setSearchQuery("");}} style={{
             background:  tab===t?C.yellow:"transparent",
             border:      "none",
             borderBottom:tab===t?`4px solid ${C.black}`:"4px solid transparent",
@@ -2534,7 +2535,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   <p style={{ color:"#ccc",fontSize:"12px",textAlign:"center",
                     padding:"20px 0",fontWeight:800,fontStyle:"italic" }}>All placed! ✓</p>
                 )}
-                {(itinerary?itinerary[0]?.places||[]:[]).map((loc,locIdx)=>{
+                {(itinerary?itinerary[0]?.places||[]:[])
+                  .filter(loc=>!searchQuery||loc.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((loc,locIdx)=>{
                   const isTapSel = tapSelected?.dayIdx===-1 && tapSelected?.locIdx===locIdx;
                   return (
                   <div key={loc.id}
@@ -2695,6 +2698,29 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                 </button>
             </div>
 
+            {/* Search bar */}
+            <div style={{ display:"flex", alignItems:"center", gap:"8px",
+              marginBottom:"10px" }}>
+              <div style={{ flex:1, display:"flex", alignItems:"center", gap:"8px",
+                background:C.white, border:`2px solid ${C.black}`, borderRadius:"999px",
+                padding:"6px 14px", boxShadow:`2px 2px 0 ${C.black}` }}>
+                <span style={{ fontSize:"14px" }}>🔍</span>
+                <input
+                  value={searchQuery}
+                  onChange={e=>setSearchQuery(e.target.value)}
+                  placeholder="Search places…"
+                  style={{ flex:1, border:"none", outline:"none", fontSize:"13px",
+                    fontWeight:700, fontFamily:"'Nunito',sans-serif",
+                    background:"transparent", color:C.black }}/>
+                {searchQuery&&(
+                  <button onClick={()=>setSearchQuery("")}
+                    style={{ background:"none", border:"none", cursor:"pointer",
+                      fontSize:"13px", fontWeight:900, color:"#aaa", padding:0,
+                      lineHeight:1 }}>✕</button>
+                )}
+              </div>
+            </div>
+
             {/* Avatar filter bar */}
             <div style={{ display:"flex", alignItems:"center", gap:"8px",
               marginBottom:"12px", flexWrap:"wrap" }}>
@@ -2741,10 +2767,13 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
               scrollbarWidth:"thin",
             }}>
               {(itinerary?itinerary.slice(1):Array.from({length:days},(_,i)=>({day:i+1,places:[]}))).map((dayObj,dayIdx)=>{
-                const visiblePlaces = filterMember
-                  ? dayObj.places.filter(p=>p._isTitleCard||(p.votes||[]).includes(filterMember.name))
-                  : dayObj.places;
-                const noMatchForFilter = filterMember && visiblePlaces.filter(p=>!p._isTitleCard).length===0;
+                const visiblePlaces = dayObj.places.filter(p=>{
+                  if(p._isTitleCard) return true;
+                  const matchesMember = !filterMember || (p.votes||[]).includes(filterMember.name);
+                  const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+                  return matchesMember && matchesSearch;
+                });
+                const noMatchForFilter = (filterMember||searchQuery) && visiblePlaces.filter(p=>!p._isTitleCard).length===0;
 
                 const dayColors=["#FF6B35","#00C4CC","#FF69B4","#7ED321","#9B59B6","#F5C518","#E91E63","#3F51B5"];
                 const dc = dayColors[dayIdx%dayColors.length];
