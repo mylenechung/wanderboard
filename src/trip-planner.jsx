@@ -594,7 +594,7 @@ function LocationCard({ loc, currentMember, onVote, onEdit, onDelete, members, d
 /* ══════════════════════════════════════════════════════════
    ITINERARY CARD — collapsed by default, expands on click
 ══════════════════════════════════════════════════════════ */
-function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, onDragStart, onMoveUp, onMoveDown }) {
+function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, onDragStart, onMoveUp, onMoveDown, onTapMove, isTapSelected }) {
   const [open, setOpen] = useState(false);
 
   // ── Title Card (label divider) ──
@@ -637,13 +637,13 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
       draggable
       onDragStart={onDragStart}
       style={{
-        background:   C.white,
-        border:       `3px solid ${C.black}`,
+        background:   isTapSelected ? C.orange+"22" : C.white,
+        border:       isTapSelected ? `3px solid ${C.orange}` : `3px solid ${C.black}`,
         borderRadius: "14px",
         boxShadow:    `4px 4px 0 ${C.black}`,
         marginBottom: "10px",
         overflow:     "hidden",
-        transition:   "box-shadow .1s,transform .1s",
+        transition:   "box-shadow .1s,transform .1s,border .1s,background .1s",
         cursor:       "grab",
       }}
       onMouseEnter={e=>{ e.currentTarget.style.transform="translate(-2px,-2px)"; e.currentTarget.style.boxShadow=`6px 6px 0 ${C.black}`; }}
@@ -690,9 +690,18 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
           </div>
         </div>
 
-        {/* Move arrows + chevron only */}
+        {/* Move arrows + move button + chevron */}
         <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:"3px",flexShrink:0 }}>
           <div style={{ display:"flex",alignItems:"center",gap:"4px" }}>
+            {onTapMove&&(
+              <button onClick={e=>{e.stopPropagation();onTapMove();}}
+                title="Move to another day"
+                style={{ background:isTapSelected?C.orange:C.yellow,
+                  border:`2px solid ${C.black}`,borderRadius:"6px",
+                  cursor:"pointer",padding:"2px 6px",fontSize:"12px",
+                  boxShadow:`2px 2px 0 ${C.black}`,fontWeight:900,lineHeight:1,
+                  transition:"background .1s" }}>🔀</button>
+            )}
             <div style={{ display:"flex",flexDirection:"column",gap:"1px" }}>
               {onMoveUp&&<button onClick={e=>{e.stopPropagation();onMoveUp();}}
                 style={{ background:C.cream,border:`1px solid ${C.black}`,borderRadius:"4px",
@@ -2520,10 +2529,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   <div key={loc.id}
                     onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                     onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
-                    onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,-1,locIdx);}}
-                    onClick={()=>handleTapSelect(-1,locIdx)}
-                    style={{ outline:isTapSel?`3px solid ${C.orange}`:"none", borderRadius:"14px",
-                      background:isTapSel?C.orange+"22":"transparent", cursor:"pointer" }}>
+                    onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,-1,locIdx);}}>
                     <ItineraryCard loc={loc} currentMember={currentMember}
                       members={trip.members} onVote={handleToggleVote}
                       onEdit={setEditLoc}
@@ -2533,7 +2539,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       }}
                       onMoveUp={locIdx>0?()=>handleMoveCard(-1,locIdx,-1,locIdx-1):null}
                       onMoveDown={locIdx<(itinerary?itinerary[0]?.places?.length||0:0)-1?()=>handleMoveCard(-1,locIdx,-1,locIdx+1):null}
-                      onDragStart={e=>handleDragStart(e,-1,locIdx)}/>
+                      onDragStart={e=>handleDragStart(e,-1,locIdx)}
+                      onTapMove={()=>handleTapSelect(-1,locIdx)}
+                      isTapSelected={isTapSel}/>
                   </div>
                   );
                 })}
@@ -2875,10 +2883,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       <div key={loc.id}
                         onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                         onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
-                        onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,dayIdx,locIdx);}}
-                        onClick={e=>{e.stopPropagation();handleTapSelect(dayIdx,locIdx);}}
-                        style={{ outline:isTapSel?`3px solid ${C.orange}`:"none", borderRadius:"14px",
-                          background:isTapSel?C.orange+"22":"transparent", cursor:"pointer" }}>
+                        onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,dayIdx,locIdx);}}>
                         <ItineraryCard loc={loc} currentMember={currentMember}
                           members={trip.members} onVote={handleToggleVote}
                           onEdit={setEditLoc}
@@ -2888,7 +2893,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                           }}
                           onMoveUp={locIdx>0?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx-1):null}
                           onMoveDown={locIdx<visiblePlaces.length-1?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx+1):null}
-                          onDragStart={e=>handleDragStart(e,dayIdx,locIdx)}/>
+                          onDragStart={e=>handleDragStart(e,dayIdx,locIdx)}
+                          onTapMove={()=>handleTapSelect(dayIdx,locIdx)}
+                          isTapSelected={isTapSel}/>
                       </div>
                       );
                     })}
