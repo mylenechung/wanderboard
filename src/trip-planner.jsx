@@ -1700,6 +1700,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [itineraryLoaded,setItineraryLoaded] = useState(false);
   const [dragInfo,setDragInfo] = useState(null);
   const [colDragIdx,setColDragIdx] = useState(null); // for dragging entire day columns
+  const [tapSelected,setTapSelected] = useState(null); // {dayIdx, locIdx} for mobile tap-to-place
   const [dayTitles,setDayTitles] = useState({});
   const [dayNotes,setDayNotes] = useState({});
   const [editingDayTitle,setEditingDayTitle] = useState(null);
@@ -1858,6 +1859,25 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
     setItinerary(newIt);
     setDragInfo(null);
   }
+  // ── Mobile tap-to-place ───────────────────────────────────
+  function handleTapSelect(dayIdx, locIdx) {
+    setTapSelected(prev =>
+      prev && prev.dayIdx===dayIdx && prev.locIdx===locIdx ? null : {dayIdx, locIdx}
+    );
+  }
+  function handleTapDrop(targetDay) {
+    if(!tapSelected) return;
+    const {dayIdx, locIdx} = tapSelected;
+    const fromBucket = bucketIdx(dayIdx);
+    const toBucket = bucketIdx(targetDay);
+    if(fromBucket===toBucket) { setTapSelected(null); return; }
+    const newIt = itinerary.map(d=>({...d,places:[...d.places]}));
+    const [moved] = newIt[fromBucket].places.splice(locIdx,1);
+    newIt[toBucket].places.push(moved);
+    setItinerary(newIt);
+    setTapSelected(null);
+  }
+
   function handleColumnReorder(fromIdx, toIdx) {
     if(fromIdx===toIdx) return;
     // itinerary[0] is unassigned pool, day columns start at index 1
@@ -2464,7 +2484,17 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   </span>
                 </div>
                 <p style={{ fontSize:"11px", color:"#999", fontWeight:700, margin:"4px 0 0",
-                  fontFamily:"'Nunito',sans-serif" }}>Drag to a day →</p>
+                  fontFamily:"'Nunito',sans-serif" }}>
+                  {tapSelected?.dayIdx===-1 ? (
+                    <span>
+                      ✓ Selected! Now tap a day column →
+                      <button onClick={e=>{e.stopPropagation();setTapSelected(null);}}
+                        style={{ marginLeft:"6px",background:"none",border:"none",
+                          cursor:"pointer",fontWeight:900,fontSize:"11px",color:C.orange,
+                          fontFamily:"'Nunito',sans-serif",padding:0 }}>✕ cancel</button>
+                    </span>
+                  ) : "Drag to a day → or tap card to select"}
+                </p>
               </div>
 
               {/* Place list */}
@@ -2476,11 +2506,16 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   <p style={{ color:"#ccc",fontSize:"12px",textAlign:"center",
                     padding:"20px 0",fontWeight:800,fontStyle:"italic" }}>All placed! ✓</p>
                 )}
-                {(itinerary?itinerary[0]?.places||[]:[]).map((loc,locIdx)=>(
+                {(itinerary?itinerary[0]?.places||[]:[]).map((loc,locIdx)=>{
+                  const isTapSel = tapSelected?.dayIdx===-1 && tapSelected?.locIdx===locIdx;
+                  return (
                   <div key={loc.id}
                     onDragOver={e=>{e.preventDefault();e.stopPropagation();e.currentTarget.style.borderTop=`3px solid ${C.orange}`;}}
                     onDragLeave={e=>{e.currentTarget.style.borderTop="3px solid transparent";}}
-                    onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,-1,locIdx);}}>
+                    onDrop={e=>{e.currentTarget.style.borderTop="3px solid transparent";e.stopPropagation();handleDrop(e,-1,locIdx);}}
+                    onClick={()=>handleTapSelect(-1,locIdx)}
+                    style={{ outline:isTapSel?`3px solid ${C.orange}`:"none", borderRadius:"14px",
+                      background:isTapSel?C.orange+"22":"transparent", cursor:"pointer" }}>
                     <ItineraryCard loc={loc} currentMember={currentMember}
                       members={trip.members} onVote={handleToggleVote}
                       onEdit={setEditLoc}
@@ -2492,7 +2527,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                       onMoveDown={locIdx<(itinerary?itinerary[0]?.places?.length||0:0)-1?()=>handleMoveCard(-1,locIdx,-1,locIdx+1):null}
                       onDragStart={e=>handleDragStart(e,-1,locIdx)}/>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Add place */}
@@ -2707,24 +2743,33 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                     onDrop={e=>{
                       e.currentTarget.style.outline="none";
                       if(colDragIdx!==null) {
-                        // Column drop — reorder columns
                         handleColumnReorder(colDragIdx, dayIdx);
                         setColDragIdx(null);
                       } else {
-                        // Card drop
                         handleDrop(e,dayIdx);
                       }
                     }}
+                    onClick={()=>{ if(tapSelected) handleTapDrop(dayIdx); }}
                     style={{
-                      background: colDragIdx===dayIdx ? "#f9f9f9" : C.white,
-                      border:`3px solid ${C.black}`,
+                      background: tapSelected ? C.cyan+"22" : colDragIdx===dayIdx ? "#f9f9f9" : C.white,
+                      border: tapSelected ? `3px dashed ${C.orange}` : `3px solid ${C.black}`,
                       borderRadius:"20px", padding:"14px",
                       minWidth:"340px", width:"340px", flexShrink:0,
                       boxShadow:`5px 5px 0 ${C.black}`,
                       display:"flex", flexDirection:"column",
                       opacity: colDragIdx===dayIdx ? 0.5 : 1,
-                      transition:"opacity .15s",
+                      transition:"opacity .15s, border .15s, background .15s",
+                      cursor: tapSelected ? "pointer" : "default",
                     }}>
+                    {/* Tap-to-place hint banner */}
+                    {tapSelected&&(
+                      <div style={{ background:C.orange,color:C.white,fontWeight:900,
+                        fontSize:"12px",textAlign:"center",padding:"6px 10px",
+                        borderRadius:"10px",marginBottom:"8px",
+                        fontFamily:"'Nunito',sans-serif",flexShrink:0 }}>
+                        Tap here to place ✓
+                      </div>
+                    )}
                     {/* Day header */}
                     <div style={{ marginBottom:"10px", flexShrink:0 }}>
                       <div style={{ display:"flex",alignItems:"center",gap:"8px",marginBottom:"4px" }}>
