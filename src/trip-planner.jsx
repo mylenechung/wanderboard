@@ -604,7 +604,7 @@ function LocationCard({ loc, currentMember, onVote, onEdit, onDelete, members, d
 /* ══════════════════════════════════════════════════════════
    ITINERARY CARD — collapsed by default, expands on click
 ══════════════════════════════════════════════════════════ */
-function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, onDragStart, onMoveUp, onMoveDown, onTapMove, isTapSelected }) {
+function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, onArchive, members, onDragStart, onMoveUp, onMoveDown, onTapMove, isTapSelected }) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -743,6 +743,12 @@ function ItineraryCard({ loc, currentMember, onVote, onEdit, onDelete, members, 
               background:C.pink,border:`2px solid ${C.black}`,borderRadius:"8px",
               cursor:"pointer",padding:"4px 10px",fontSize:"13px",
               boxShadow:`2px 2px 0 ${C.black}`,fontWeight:900 }}>🗑️ Delete</button>
+            {onArchive&&(
+              <button onClick={e=>{e.stopPropagation();onArchive();}} style={{
+                background:C.yellow,border:`2px solid ${C.black}`,borderRadius:"8px",
+                cursor:"pointer",padding:"4px 10px",fontSize:"13px",
+                boxShadow:`2px 2px 0 ${C.black}`,fontWeight:900 }}>🗂️ Archive</button>
+            )}
           </div>
 
           {/* Notes */}
@@ -1718,6 +1724,8 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   const [sortByVotes,setSortByVotes] = useState(false);
   const [itinerary,setItinerary] = useState(null);
   const [itineraryLoaded,setItineraryLoaded] = useState(false);
+  const [archived,setArchived] = useState([]);
+  const [archiveOpen,setArchiveOpen] = useState(false);
   const [dragInfo,setDragInfo] = useState(null);
   const [colDragIdx,setColDragIdx] = useState(null); // for dragging entire day columns
   const [tapSelected,setTapSelected] = useState(null); // {dayIdx, locIdx} for mobile tap-to-place
@@ -1761,6 +1769,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
         setItinerary(it);
         setDayTitles(s.dayTitles||{});
         setDayNotes(s.dayNotes||{});
+        setArchived(s.archived||[]);
       } else {
         const buckets = [{day:0, places:[...(trip.locations||[])]}];
         for(let i=1;i<=days;i++) buckets.push({day:i,places:[]});
@@ -1777,9 +1786,9 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
   // ── Persist itinerary whenever it changes ─────────────────
   useEffect(()=>{
     if(itinerary!==null && itineraryLoaded) {
-      saveItinerary(trip.id, itinerary, dayTitles, dayNotes).catch(console.error);
+      saveItinerary(trip.id, itinerary, dayTitles, dayNotes, archived).catch(console.error);
     }
-  },[itinerary, dayTitles, dayNotes, itineraryLoaded]);
+  },[itinerary, dayTitles, dayNotes, archived, itineraryLoaded]);
 
   const days = tripDays(trip);
   const locations = trip.locations||[];
@@ -1911,6 +1920,23 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
     const renumbered = newIt.map((d,i) => i===0 ? d : {...d, day:i});
     setItinerary(renumbered);
   }
+  function handleArchiveCard(dayIdx, locIdx) {
+    const bucket = bucketIdx(dayIdx);
+    const newIt = itinerary.map(d=>({...d,places:[...d.places]}));
+    const [card] = newIt[bucket].places.splice(locIdx,1);
+    setItinerary(newIt);
+    setArchived(prev=>[...prev, card]);
+  }
+  function handleRestoreCard(archIdx) {
+    const card = archived[archIdx];
+    setArchived(prev=>prev.filter((_,i)=>i!==archIdx));
+    setItinerary(prev=>prev.map((d,i)=>i===0?{...d,places:[...d.places,card]}:d));
+  }
+  function handleDeleteArchived(archIdx) {
+    if(!window.confirm("Permanently delete this archived place?")) return;
+    setArchived(prev=>prev.filter((_,i)=>i!==archIdx));
+  }
+
   function handleMoveCard(fromDay,fromIdx,toDay,toIdx) {
     const fromBucket = bucketIdx(fromDay);
     const toBucket = bucketIdx(toDay);
@@ -2551,6 +2577,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                         setItinerary(prev=>prev.map(d=>({...d,places:d.places.filter(p=>p.id!==id)})));
                         deleteLocation(id);
                       }}
+                      onArchive={()=>handleArchiveCard(-1,locIdx)}
                       onMoveUp={locIdx>0?()=>handleMoveCard(-1,locIdx,-1,locIdx-1):null}
                       onMoveDown={locIdx<(itinerary?itinerary[0]?.places?.length||0:0)-1?()=>handleMoveCard(-1,locIdx,-1,locIdx+1):null}
                       onDragStart={e=>handleDragStart(e,-1,locIdx)}
@@ -2560,6 +2587,74 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                   );
                 })}
               </div>
+
+              {/* ── Archived drawer ── */}
+              {archived.length>0&&(
+                <div style={{ borderTop:`2px dashed #ddd`, margin:"4px 10px 0",paddingTop:"8px" }}>
+                  <button onClick={()=>setArchiveOpen(o=>!o)}
+                    style={{ width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+                      background:"none",border:"none",cursor:"pointer",padding:"4px 2px",
+                      fontFamily:"'Nunito',sans-serif" }}>
+                    <span style={{ fontWeight:900,fontSize:"12px",color:"#aaa",
+                      display:"flex",alignItems:"center",gap:"6px" }}>
+                      🗂️ Archived
+                      <span style={{ background:"#eee",borderRadius:"999px",
+                        padding:"1px 7px",fontSize:"11px",color:"#999",fontWeight:900 }}>
+                        {archived.length}
+                      </span>
+                    </span>
+                    <span style={{ fontSize:"10px",color:"#bbb",fontWeight:900,
+                      transform:archiveOpen?"rotate(180deg)":"rotate(0deg)",
+                      transition:"transform .2s",display:"inline-block" }}>▼</span>
+                  </button>
+
+                  {archiveOpen&&(
+                    <div style={{ marginTop:"6px",display:"flex",flexDirection:"column",gap:"6px",
+                      paddingBottom:"8px" }}>
+                      {archived.map((loc,archIdx)=>(
+                        <div key={loc.id||archIdx}
+                          style={{ background:"#f9f9f9",border:`2px dashed #ccc`,
+                            borderRadius:"12px",padding:"8px 12px",
+                            display:"flex",alignItems:"center",gap:"8px" }}>
+                          {/* Icon */}
+                          <div style={{ flexShrink:0,width:28,height:28,borderRadius:"50%",
+                            background:"#eee",border:`2px solid #ccc`,
+                            display:"flex",alignItems:"center",justifyContent:"center",
+                            opacity:0.7 }}>
+                            <PlaceIcon iconId={loc.icon} size={14}/>
+                          </div>
+                          {/* Name + area */}
+                          <div style={{ flex:1,minWidth:0 }}>
+                            <div style={{ fontWeight:900,fontSize:"12px",color:"#888",
+                              fontFamily:"'Nunito',sans-serif",
+                              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>
+                              {loc.name}
+                            </div>
+                            {loc.area&&<div style={{ fontSize:"10px",color:"#bbb",
+                              fontWeight:700,fontFamily:"'Nunito',sans-serif" }}>{loc.area}</div>}
+                          </div>
+                          {/* Restore + Delete buttons */}
+                          <div style={{ display:"flex",gap:"4px",flexShrink:0 }}>
+                            <button onClick={()=>handleRestoreCard(archIdx)}
+                              title="Restore to Unassigned"
+                              style={{ background:C.lime,border:`2px solid ${C.black}`,
+                                borderRadius:"8px",cursor:"pointer",padding:"3px 8px",
+                                fontSize:"11px",fontWeight:900,
+                                boxShadow:`2px 2px 0 ${C.black}`,
+                                fontFamily:"'Nunito',sans-serif" }}>↩️</button>
+                            <button onClick={()=>handleDeleteArchived(archIdx)}
+                              title="Permanently delete"
+                              style={{ background:C.pink,border:`2px solid ${C.black}`,
+                                borderRadius:"8px",cursor:"pointer",padding:"3px 8px",
+                                fontSize:"11px",fontWeight:900,
+                                boxShadow:`2px 2px 0 ${C.black}` }}>×</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Add place */}
               <div style={{ padding:"10px 12px", borderTop:`2px solid #eee`, flexShrink:0 }}>
@@ -2931,6 +3026,7 @@ function TripCanvas({ trip, currentMember, onUpdateTrip, onLeave, onSwitchUser }
                             setItinerary(prev=>prev.map(d=>({...d,places:d.places.filter(p=>p.id!==id)})));
                             deleteLocation(id);
                           }}
+                          onArchive={()=>handleArchiveCard(dayIdx,locIdx)}
                           onMoveUp={locIdx>0?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx-1):null}
                           onMoveDown={locIdx<visiblePlaces.length-1?()=>handleMoveCard(dayIdx,locIdx,dayIdx,locIdx+1):null}
                           onDragStart={e=>handleDragStart(e,dayIdx,locIdx)}

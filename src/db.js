@@ -239,15 +239,15 @@ export async function fetchItinerary(tripId) {
     .maybeSingle();
   if (error) throw error;
   if (!data)  return null;
-  return { itinerary: data.itinerary, dayTitles: data.day_titles, dayNotes: data.day_notes || {} };
+  return { itinerary: data.itinerary, dayTitles: data.day_titles, dayNotes: data.day_notes || {}, archived: data.archived || [] };
 }
 
 /** Upsert (save or overwrite) the itinerary. */
-export async function saveItinerary(tripId, itinerary, dayTitles, dayNotes) {
+export async function saveItinerary(tripId, itinerary, dayTitles, dayNotes, archived) {
   const { error } = await supabase
     .from("itineraries")
     .upsert(
-      { trip_id: tripId, itinerary, day_titles: dayTitles, day_notes: dayNotes || {} },
+      { trip_id: tripId, itinerary, day_titles: dayTitles, day_notes: dayNotes || {}, archived: archived || [] },
       { onConflict: "trip_id" }
     );
   if (error) throw error;
